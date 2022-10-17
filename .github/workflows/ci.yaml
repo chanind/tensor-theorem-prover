@@ -1,0 +1,47 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  lint_test_and_build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        with:
+          python-version: "3.7"
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+      - name: Install dependencies
+        run: poetry install --no-interaction
+      - name: flake8 linting
+        run: poetry run flake8 .
+      - name: black code formatting
+        run: poetry run black . --check
+      - name: mypy type checking
+        run: poetry run mypy .
+      - name: pytest
+        run: poetry run pytest --cov=./ --cov-report=xml
+      # TODO: uncomment when repo is public to add test coverage stats
+      # - uses: codecov/codecov-action@v2
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+      #     files: ./coverage.xml
+      #     fail_ci_if_error: true
+      - name: build
+        run: poetry build
+  # TODO: uncomment to start publishing code to pypi
+  # release:
+  #   needs: lint_test_and_build
+  #   # https://github.community/t/how-do-i-specify-job-dependency-running-in-another-workflow/16482
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'chore(release):')
+  #   runs-on: ubuntu-latest
+  #   concurrency: release
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Semantic Release
+  #       # uses: relekang/python-semantic-release@v7.28.1
+  #       # temp fix until https://github.com/relekang/python-semantic-release/pull/472 is fixed
+  #       uses: chanind/python-semantic-release@7-28-1-packaging-fix
+  #       with:
+  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+  #         repository_username: __token__
+  #         repository_password: ${{ secrets.PYPI_TOKEN }}

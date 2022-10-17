@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "amr-reasoner"
+version = "0.1.0"
+description = "Symbolic reasoner for working with logic derived from Abstract Meaning Representation (AMR)"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/chanind/amr-reasoner"
+authors = ["David Chanin <chanindav@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.7, <4.0"
+numpy = "^1.21.1"
+immutables = "^0.17"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.1.3"
+black = "^22.10.0"
+flake8 = "^5.0.4"
+mypy = "^0.982"
+syrupy = "^3.0.2"
+pytest-cov = "^4.0.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.semantic_release]
+version_variable = [
+    "amr_reasoner/__init__.py:__version__",
+    "pyproject.toml:version"
+]
+branch = "main"
+upload_to_pypi = true
+upload_to_release = true
+build_command = "pip install poetry && poetry build"
