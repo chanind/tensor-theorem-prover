@@ -1,4 +1,4 @@
-import pytest  # type: ignore
+import pytest
 import numpy as np
 
 from amr_reasoner.similarity import cosine_similarity, symbol_compare

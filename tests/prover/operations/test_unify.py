@@ -1,6 +1,6 @@
 from immutables import Map
 import numpy as np
-import pytest  # type: ignore
+import pytest
 from amr_reasoner.prover.Goal import Goal
 
 from amr_reasoner.prover.operations.unify import (

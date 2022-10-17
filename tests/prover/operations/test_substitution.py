@@ -2,7 +2,7 @@
 
 
 from immutables import Map
-import pytest  # type: ignore
+import pytest
 from amr_reasoner.prover.operations.substitution import (
     SubstitutionsMap,
     VariableBindingError,
