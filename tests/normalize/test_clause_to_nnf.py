@@ -20,8 +20,8 @@ const2 = Constant("const2")
 X = Variable("X")
 
 
-def test_simple_and_clause_to_nnf_stays_unchanged() -> None:
-    clause = And((pred1(const1), pred2(const2)))
+def test_simplifies_and_clause_to_nnf_stays_unchanged() -> None:
+    clause = And(pred1(const1), pred2(const2))
     assert clause_to_nnf(clause) == clause
 
 
@@ -41,12 +41,12 @@ def test_simplifies_not_exists_clause() -> None:
 
 
 def test_simplifies_not_or_clause() -> None:
-    clause = Not(Or((pred1(X), pred2(X))))
+    clause = Not(Or(pred1(X), pred2(X)))
     assert str(clause_to_nnf(clause)) == "¬pred1(X) ∧ ¬pred2(X)"
 
 
 def test_simplifies_not_and_clause() -> None:
-    clause = Not(And((pred1(X), pred2(X))))
+    clause = Not(And(pred1(X), pred2(X)))
     assert str(clause_to_nnf(clause)) == "¬pred1(X) ∨ ¬pred2(X)"
 
 

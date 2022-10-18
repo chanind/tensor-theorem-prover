@@ -10,7 +10,7 @@ from amr_reasoner.types.Variable import Variable
 class And:
     args: tuple["Clause", ...]
 
-    def __init__(self, args: tuple["Clause", ...]) -> None:
+    def __init__(self, *args: "Clause") -> None:
         # automatically reduce repeated ANDs
         simplified_args: list["Clause"] = []
         for arg in args:
@@ -34,7 +34,7 @@ class And:
 class Or:
     args: tuple["Clause", ...]
 
-    def __init__(self, args: tuple["Clause", ...]) -> None:
+    def __init__(self, *args: "Clause") -> None:
         # automatically reduce repeated ORs
         simplified_args: list["Clause"] = []
         for arg in args:

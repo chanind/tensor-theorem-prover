@@ -30,9 +30,9 @@ def clause_to_nnf(clause: Clause) -> NNFClause:
 
 def not_clause_to_nnf(clause: Not) -> NNFClause:
     if type(clause.body) is And:
-        return or_clause_to_nnf(Or(tuple(map(Not, clause.body.args))))
+        return or_clause_to_nnf(Or(*map(Not, clause.body.args)))
     if type(clause.body) is Or:
-        return and_clause_to_nnf(And(tuple(map(Not, clause.body.args))))
+        return and_clause_to_nnf(And(*map(Not, clause.body.args)))
     if type(clause.body) is Not:
         return clause_to_nnf(clause.body.body)
     if type(clause.body) is Implies:
@@ -47,12 +47,12 @@ def not_clause_to_nnf(clause: Not) -> NNFClause:
 
 
 def implies_clause_to_nnf(clause: Implies) -> NNFClause:
-    return or_clause_to_nnf(Or((Not(clause.antecedent), clause.consequent)))
+    return or_clause_to_nnf(Or(Not(clause.antecedent), clause.consequent))
 
 
 def and_clause_to_nnf(clause: And) -> NNFClause:
-    return And(tuple([clause_to_nnf(arg) for arg in clause.args]))
+    return And(*[clause_to_nnf(arg) for arg in clause.args])
 
 
 def or_clause_to_nnf(clause: Or) -> NNFClause:
-    return Or(tuple([clause_to_nnf(arg) for arg in clause.args]))
+    return Or(*[clause_to_nnf(arg) for arg in clause.args])
