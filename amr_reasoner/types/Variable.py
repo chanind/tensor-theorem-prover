@@ -6,4 +6,4 @@ class Variable:
     name: str
 
     def __str__(self) -> str:
-        return f"VAR:{self.name}"
+        return self.name

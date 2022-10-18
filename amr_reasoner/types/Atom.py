@@ -4,13 +4,14 @@ from dataclasses import dataclass
 from .Variable import Variable
 from .Constant import Constant
 from .Predicate import Predicate
+from .Function import Function
 
 
 @dataclass(frozen=True, eq=False)
 class Atom:
-    predicate: Predicate
+    operator: Predicate | Function
     terms: tuple[Constant | Variable, ...]
 
     def __str__(self) -> str:
         terms_str = ",".join([str(term) for term in self.terms])
-        return f"{self.predicate.symbol}({terms_str})"
+        return f"{self.operator.symbol}({terms_str})"

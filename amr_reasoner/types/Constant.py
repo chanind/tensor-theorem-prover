@@ -8,4 +8,4 @@ class Constant:
     embedding: Optional[Any] = None
 
     def __str__(self) -> str:
-        return f"CONST:{self.symbol}"
+        return self.symbol
