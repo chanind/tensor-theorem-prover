@@ -2,7 +2,7 @@ from .Atom import Atom
 from .Constant import Constant
 from .Predicate import Predicate
 from .Variable import Variable
-from .connectives import And, Or, Not, Implies, Exists, All
+from .connectives import And, Or, Not, Implies, Exists, All, Clause
 
 __all__ = (
     "Atom",
@@ -15,4 +15,5 @@ __all__ = (
     "Implies",
     "Exists",
     "All",
+    "Clause",
 )
