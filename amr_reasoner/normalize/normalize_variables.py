@@ -1,22 +1,19 @@
 from __future__ import annotations
-from typing import TypeVar, cast
+from typing import Iterable, TypeVar, cast
 from amr_reasoner.normalize.find_unbound_var_names import find_unbound_var_names
 
 from amr_reasoner.types import (
-    Clause,
     Variable,
     And,
     Or,
-    Implies,
     Not,
     All,
     Exists,
     Constant,
+    Atom,
+    BoundFunction,
 )
-from amr_reasoner.types.Atom import Atom
-from .to_nnf import NNFClause
-
-T = TypeVar("T", Clause, NNFClause)
+from .to_nnf import NNFClause, assert_nnf
 
 
 class VarNameGenerator:
@@ -28,7 +25,7 @@ class VarNameGenerator:
         return f"{name}_{self.index}"
 
 
-def normalize_variables(clause: T) -> T:
+def normalize_variables(clause: NNFClause) -> NNFClause:
     """Ensure that every variable has a unique name."""
     name_generator = VarNameGenerator()
     unbound_var_names = sorted(find_unbound_var_names(clause))
@@ -37,65 +34,61 @@ def normalize_variables(clause: T) -> T:
 
 
 def normalize_variables_recursive(
-    clause: T, name_generator: VarNameGenerator, remap_var_names: dict[str, str]
-) -> T:
+    clause: NNFClause, name_generator: VarNameGenerator, remap_var_names: dict[str, str]
+) -> NNFClause:
+    normalize_term = lambda term: normalize_variables_recursive(
+        assert_nnf(term), name_generator, remap_var_names
+    )
     if isinstance(clause, And):
-        return And(
-            *[
-                normalize_variables_recursive(arg, name_generator, remap_var_names)
-                for arg in clause.args
-            ]
-        )
+        return And(*map(normalize_term, clause.args))
     if isinstance(clause, Or):
-        return Or(
-            *[
-                normalize_variables_recursive(arg, name_generator, remap_var_names)
-                for arg in clause.args
-            ]
-        )
-    if isinstance(clause, Implies):
-        # If the clause is NNF, this will never be called so the cast is safe.
-        return cast(
-            T,
-            Implies(
-                normalize_variables_recursive(
-                    clause.antecedent, name_generator, remap_var_names
-                ),
-                normalize_variables_recursive(
-                    clause.consequent, name_generator, remap_var_names
-                ),
-            ),
-        )
+        return Or(*map(normalize_term, clause.args))
     if isinstance(clause, Not):
-        return Not(
-            normalize_variables_recursive(clause.body, name_generator, remap_var_names)
-        )
+        return Not(normalize_term(clause.body))
     if isinstance(clause, All):
         new_var_name = name_generator(clause.variable.name)
         next_remap = {**remap_var_names, clause.variable.name: new_var_name}
         return All(
             Variable(new_var_name),
-            normalize_variables_recursive(clause.body, name_generator, next_remap),
+            normalize_variables_recursive(
+                assert_nnf(clause.body), name_generator, next_remap
+            ),
         )
     if isinstance(clause, Exists):
         new_var_name = name_generator(clause.variable.name)
         next_remap = {**remap_var_names, clause.variable.name: new_var_name}
         return Exists(
             Variable(new_var_name),
-            normalize_variables_recursive(clause.body, name_generator, next_remap),
+            normalize_variables_recursive(
+                assert_nnf(clause.body), name_generator, next_remap
+            ),
         )
     if isinstance(clause, Atom):
-        terms: list[Variable | Constant] = []
-        for term in clause.terms:
+        terms = normalize_terms_recursive(clause.terms, remap_var_names)
+        return Atom(clause.predicate, terms)
+    else:
+        raise ValueError(f"Unknown clause type: {type(clause)}")
+
+
+def normalize_terms_recursive(
+    terms: Iterable[Variable | Constant | BoundFunction],
+    remap_var_names: dict[str, str],
+) -> tuple[Variable | Constant | BoundFunction, ...]:
+    normalized_terms: list[Variable | Constant | BoundFunction] = []
+    for term in terms:
+        if isinstance(term, Variable):
             if isinstance(term, Variable):
                 # should never happen, since we should find all unbound variables before entering this function
                 if term.name not in remap_var_names:
-                    raise ValueError(
-                        f"Variable {term.name} is not bound in clause {clause}."
-                    )
-                terms.append(Variable(remap_var_names[term.name]))
-            else:
-                terms.append(term)
-        return Atom(clause.operator, tuple(terms))
-    else:
-        raise ValueError(f"Unknown clause type: {type(clause)}")
+                    raise ValueError(f"Variable {term.name} is not bound.")
+                normalized_terms.append(Variable(remap_var_names[term.name]))
+        elif isinstance(term, BoundFunction):
+            normalized_terms.append(
+                BoundFunction(
+                    term.function,
+                    normalize_terms_recursive(term.terms, remap_var_names),
+                )
+            )
+        else:
+            normalized_terms.append(term)
+    return tuple(normalized_terms)

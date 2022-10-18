@@ -6,6 +6,11 @@ from amr_reasoner.types.connectives import All, And, Clause, Exists, Implies, No
 NNFClause = Union[Atom, Not, And, Or, All, Exists]
 
 
+def assert_nnf(clause: Clause) -> NNFClause:
+    assert isinstance(clause, (Atom, Not, And, Or, All, Exists))
+    return clause
+
+
 def to_nnf(clause: Clause) -> NNFClause:
     """
     Convert clause to negation normal form.

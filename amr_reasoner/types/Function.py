@@ -16,11 +16,18 @@ class Function:
     symbol: str
 
     # shorthand for creating an Atom out of this predicate and terms
-    def __call__(self, *terms: Constant | Variable) -> Atom:
-        # need to import inside of here to avoid circular references
-        from .Atom import Atom
-
-        return Atom(self, terms)
+    def __call__(self, *terms: Constant | Variable | BoundFunction) -> BoundFunction:
+        return BoundFunction(self, terms)
 
     def __str__(self) -> str:
         return self.symbol
+
+
+@dataclass(frozen=True, eq=False)
+class BoundFunction:
+    function: Function
+    terms: tuple[Constant | Variable | BoundFunction, ...]
+
+    def __str__(self) -> str:
+        terms_str = ",".join([str(term) for term in self.terms])
+        return f"{self.function.symbol}({terms_str})"
