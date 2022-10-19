@@ -31,19 +31,8 @@ class CNFDisjunction:
         return f"[{inner_disjunction}]"
 
 
-@dataclass(frozen=True)
-class CNFClause:
-    disjunctions: frozenset[CNFDisjunction]
-
-    def __str__(self) -> str:
-        inner_conjunction = " ∧ ".join(
-            sorted(str(disjunction) for disjunction in self.disjunctions)
-        )
-        return f"[{inner_conjunction}]"
-
-
 # TODO: dedupe literals/disjunctions based on embedding vectors, if present
-def to_cnf(clause: Clause) -> CNFClause:
+def to_cnf(clause: Clause) -> set[CNFDisjunction]:
     """Convert a clause to conjunctive normal form (CNF).
     Args:
         clauses: The clause to convert.
@@ -58,16 +47,14 @@ def to_cnf(clause: Clause) -> CNFClause:
     return norm_clause_to_cnf(normalized_clause)
 
 
-def norm_clause_to_cnf(clause: SimplifiedClause) -> CNFClause:
+def norm_clause_to_cnf(clause: SimplifiedClause) -> set[CNFDisjunction]:
     if isinstance(clause, Atom) or isinstance(clause, Not):
         literal = element_to_cnf_literal(clause)
-        return CNFClause(frozenset([CNFDisjunction(frozenset([literal]))]))
+        return set([CNFDisjunction(frozenset([literal]))])
     if isinstance(clause, Not):
         # this should already be basically in CNF, so there can only be atoms inside of a Not
         assert isinstance(clause.body, Atom)
-        return CNFClause(
-            frozenset([CNFDisjunction(frozenset([CNFLiteral(clause.body, False)]))])
-        )
+        return set([CNFDisjunction(frozenset([CNFLiteral(clause.body, False)]))])
     if isinstance(clause, And):
         disjunctions = set()
         for term in clause.args:
@@ -79,7 +66,7 @@ def norm_clause_to_cnf(clause: SimplifiedClause) -> CNFClause:
                     assert isinstance(element, Atom) or isinstance(element, Not)
                     literals.add(element_to_cnf_literal(element))
             disjunctions.add(CNFDisjunction(frozenset(literals)))
-        return CNFClause(frozenset(disjunctions))
+        return set(disjunctions)
     raise ValueError(f"Unnormalized clause type in CNF conversion: {type(clause)}")
 
 

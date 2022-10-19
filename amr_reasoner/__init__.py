@@ -1,13 +1,13 @@
 __version__ = "0.1.0"
 
-from .prover.Prover import Prover
+from .prover.ResolutionProver import ResolutionProver
 
 from .types import Atom, Constant, Predicate, Variable
 
 from .similarity import cosine_similarity, symbol_compare
 
 __all__ = (
-    "Prover",
+    "ResolutionProver",
     "Atom",
     "Constant",
     "Predicate",

@@ -1,6 +1,5 @@
 from __future__ import annotations
 from amr_reasoner.normalize.to_cnf import (
-    CNFClause,
     CNFDisjunction,
     to_cnf,
     element_to_cnf_literal,
@@ -14,7 +13,6 @@ from amr_reasoner.types import (
     Or,
     Not,
     Atom,
-    All,
     Exists,
     Function,
 )
@@ -32,12 +30,10 @@ X = Variable("X")
 Y = Variable("Y")
 
 
-def to_cnf_helper(clauses: list[list[Atom | Not]]) -> CNFClause:
-    return CNFClause(
-        frozenset(
-            CNFDisjunction(frozenset(element_to_cnf_literal(elm) for elm in clause))
-            for clause in clauses
-        )
+def to_cnf_helper(clauses: list[list[Atom | Not]]) -> set[CNFDisjunction]:
+    return set(
+        CNFDisjunction(frozenset(element_to_cnf_literal(elm) for elm in clause))
+        for clause in clauses
     )
 
 
@@ -76,13 +72,12 @@ def test_to_cnf_with_nested_functions() -> None:
         pred1(Y),
         Exists(X, Or(pred2(func1(func1(X)), Y), pred1(const1, func2(Y, func1(X))))),
     )
-    assert (
-        str(to_cnf(clause))
-        == "[[pred1(Y_1)] ∧ [pred1(const1,func2(Y_1,func1(_SK_1(Y_1)))) ∨ pred2(func1(func1(_SK_1(Y_1))),Y_1)]]"
-    )
+    assert set(map(str, to_cnf(clause))) == {
+        "[pred1(Y_1)]",
+        "[pred1(const1,func2(Y_1,func1(_SK_1(Y_1)))) ∨ pred2(func1(func1(_SK_1(Y_1))),Y_1)]",
+    }
 
 
 def test_to_cnf_with_implies_clause() -> None:
     clause = Implies(pred1(X), pred2(X))
-    print(to_cnf(clause))
-    assert str(to_cnf(clause)) == "[[pred2(X_1) ∨ ¬pred1(X_1)]]"
+    assert set(map(str, to_cnf(clause))) == {"[pred2(X_1) ∨ ¬pred1(X_1)]"}
