@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional, Any
 
+from .Function import BoundFunction
 from .Constant import Constant
 from .Variable import Variable
 
@@ -17,7 +18,7 @@ class Predicate:
     embedding: Optional[Any] = None
 
     # shorthand for creating an Atom out of this predicate and terms
-    def __call__(self, *terms: Constant | Variable) -> Atom:
+    def __call__(self, *terms: Constant | Variable | BoundFunction) -> Atom:
         # need to import inside of here to avoid circular references
         from .Atom import Atom
 

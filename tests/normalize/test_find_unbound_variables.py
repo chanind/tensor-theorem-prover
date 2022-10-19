@@ -4,10 +4,11 @@ from amr_reasoner.types import (
     Constant,
     Predicate,
     Variable,
-    Implies,
     Or,
     All,
     Exists,
+    Function,
+    Implies,
 )
 
 pred1 = Predicate("pred1")
@@ -15,6 +16,9 @@ pred2 = Predicate("pred2")
 
 const1 = Constant("const1")
 const2 = Constant("const2")
+
+func1 = Function("func1")
+func2 = Function("func2")
 
 X = Variable("X")
 Y = Variable("Y")
@@ -44,4 +48,9 @@ def test_find_unbound_vars_finds_unbound_vars_in_nested_clause() -> None:
 
 def test_find_unbound_vars_handles_duplicated_var_names() -> None:
     clause = Or(Exists(X, pred2(X)), pred1(X))
+    assert find_unbound_var_names(clause) == {"X"}
+
+
+def test_find_unbound_vars_handles_nested_functions() -> None:
+    clause = And(pred1(func1(X)), All(Y, pred2(func2(X, func2(func1(Y), X)))))
     assert find_unbound_var_names(clause) == {"X"}

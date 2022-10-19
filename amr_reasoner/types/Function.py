@@ -1,14 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from .Constant import Constant
 from .Variable import Variable
-
-# hacky solution to solving circular import for type-checking only
-# from https://stackoverflow.com/a/39757388/245362
-if TYPE_CHECKING:
-    from .Atom import Atom
 
 
 @dataclass(frozen=True, eq=False)
@@ -25,6 +19,10 @@ class Function:
 
 @dataclass(frozen=True, eq=False)
 class BoundFunction:
+    """
+    Works like a constant or variable in atoms
+    """
+
     function: Function
     terms: tuple[Constant | Variable | BoundFunction, ...]
 

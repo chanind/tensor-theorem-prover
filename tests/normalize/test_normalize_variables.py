@@ -4,10 +4,10 @@ from amr_reasoner.types import (
     Constant,
     Predicate,
     Variable,
-    Implies,
     Or,
     All,
     Exists,
+    Function,
 )
 
 pred1 = Predicate("pred1")
@@ -15,6 +15,9 @@ pred2 = Predicate("pred2")
 
 const1 = Constant("const1")
 const2 = Constant("const2")
+
+func1 = Function("func1")
+func2 = Function("func2")
 
 X = Variable("X")
 Y = Variable("Y")
@@ -42,4 +45,12 @@ def test_normalize_variables_handles_nested_vars_with_same_name_2() -> None:
     assert (
         str(normalize_variables(clause))
         == "pred1(X_1) ∧ ∀X_2(pred2(X_2,X_2) ∨ pred1(X_2))"
+    )
+
+
+def test_normalize_variables_handles_nested_functions() -> None:
+    clause = And(pred1(func1(X)), All(Y, pred2(func2(X, func2(func1(Y), X)))))
+    assert (
+        str(normalize_variables(clause))
+        == "pred1(func1(X_1)) ∧ ∀Y_2(pred2(func2(X_1,func2(func1(Y_2),X_1))))"
     )
