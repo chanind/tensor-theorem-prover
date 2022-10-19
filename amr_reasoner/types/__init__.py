@@ -1,4 +1,4 @@
-from .Atom import Atom
+from .Atom import Atom, Term
 from .Constant import Constant
 from .Predicate import Predicate
 from .Variable import Variable
@@ -18,5 +18,6 @@ __all__ = (
     "All",
     "Clause",
     "Function",
+    "Term",
     "BoundFunction",
 )
