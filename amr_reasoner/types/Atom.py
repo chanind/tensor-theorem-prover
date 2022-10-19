@@ -7,7 +7,7 @@ from .Predicate import Predicate
 from .Function import BoundFunction
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(frozen=True)
 class Atom:
     predicate: Predicate
     terms: tuple[Constant | Variable | BoundFunction, ...]

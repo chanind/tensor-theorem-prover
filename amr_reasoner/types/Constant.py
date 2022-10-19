@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional, Any
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(frozen=True)
 class Constant:
     symbol: str
     embedding: Optional[Any] = None

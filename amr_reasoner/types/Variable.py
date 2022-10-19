@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(frozen=True)
 class Variable:
     name: str
 

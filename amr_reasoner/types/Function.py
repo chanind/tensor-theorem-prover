@@ -5,7 +5,7 @@ from .Constant import Constant
 from .Variable import Variable
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(frozen=True)
 class Function:
     symbol: str
 
@@ -17,7 +17,7 @@ class Function:
         return self.symbol
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(frozen=True)
 class BoundFunction:
     """
     Works like a constant or variable in atoms

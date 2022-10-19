@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from .Atom import Atom
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(frozen=True)
 class Predicate:
     symbol: str
     embedding: Optional[Any] = None
