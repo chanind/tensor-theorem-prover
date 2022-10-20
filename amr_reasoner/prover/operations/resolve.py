@@ -40,7 +40,7 @@ def resolve(
                 similarity_func,
             )
             if unification:
-                resolvent = resolve_with_substitutions(
+                resolvent = _build_resolvent(
                     source, target, source_literal, target_literal, unification
                 )
                 new_state = ProofState(
@@ -58,7 +58,7 @@ def resolve(
     return states
 
 
-def resolve_with_substitutions(
+def _build_resolvent(
     source: CNFDisjunction,
     target: CNFDisjunction,
     source_literal: CNFLiteral,
@@ -81,10 +81,10 @@ def resolve_with_substitutions(
     source_literals = [lit for lit in source.literals if lit != source_literal]
     target_literals = [lit for lit in target.literals if lit != target_literal]
     # find all variables in source and target that aren't being substituted to avoid overlapping names
-    unused_source_vars = find_unused_variables(
+    unused_source_vars = _find_unused_variables(
         source_literals, unification.source_substitutions
     )
-    unused_target_vars = find_unused_variables(
+    unused_target_vars = _find_unused_variables(
         target_literals, unification.target_substitutions
     )
     all_vars = (
@@ -93,14 +93,14 @@ def resolve_with_substitutions(
         | set(unification.source_substitutions.keys())
         | set(unification.target_substitutions.keys())
     )
-    rename_vars_map = find_non_overlapping_var_names(
+    rename_vars_map = _find_non_overlapping_var_names(
         unused_source_vars, unused_target_vars, all_vars
     )
-    target_literals = rename_variables_in_literals(target_literals, rename_vars_map)
-    updated_source_literals = perform_substitution(
+    target_literals = _rename_variables_in_literals(target_literals, rename_vars_map)
+    updated_source_literals = _perform_substitution(
         source_literals, unification.source_substitutions
     )
-    updated_target_literals = perform_substitution(
+    updated_target_literals = _perform_substitution(
         target_literals, unification.target_substitutions
     )
     resolvent_literals = updated_source_literals + updated_target_literals
@@ -108,7 +108,7 @@ def resolve_with_substitutions(
     return resolvent
 
 
-def find_unused_variables(
+def _find_unused_variables(
     literals: list[CNFLiteral], substitutions: SubstitutionsMap
 ) -> set[Variable]:
     """return a list of all variables in the literals that aren't being substituted"""
@@ -120,7 +120,7 @@ def find_unused_variables(
     return unused_variables
 
 
-def find_non_overlapping_var_names(
+def _find_non_overlapping_var_names(
     source_vars: set[Variable], target_vars: set[Variable], all_variables: set[Variable]
 ) -> dict[Variable, Variable]:
     """Find new unused vars names for all overlapping variables between source and target"""
@@ -141,7 +141,7 @@ def find_non_overlapping_var_names(
     return renamed_vars
 
 
-def rename_variables_in_literals(
+def _rename_variables_in_literals(
     literals: list[CNFLiteral], rename_map: dict[Variable, Variable]
 ) -> list[CNFLiteral]:
     new_literals = []
@@ -157,7 +157,7 @@ def rename_variables_in_literals(
     return new_literals
 
 
-def perform_substitution(
+def _perform_substitution(
     literals: list[CNFLiteral], substitutions: SubstitutionsMap
 ) -> list[CNFLiteral]:
     new_literals = []
