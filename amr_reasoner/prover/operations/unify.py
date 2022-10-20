@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from typing import Iterable, List, Optional, Sequence, cast
 from immutables import Map
 
-from amr_reasoner.prover.types import SubstitutionsMap
+from amr_reasoner.prover.types import (
+    SOURCE_BINDING_LABEL,
+    TARGET_BINDING_LABEL,
+    BindingLabel,
+    SubstitutionsMap,
+)
 from amr_reasoner.similarity import SimilarityFunc, symbol_compare
 from amr_reasoner.types import Atom, Constant, Variable, BoundFunction, Term
 
@@ -93,6 +98,7 @@ def unify_terms(
     )
 
 
+# TODO: rewrite this method to properly handle binding labels and recursive var substitutions
 def resolve_bindings(
     source_bindings: dict[Variable, list[Variable | Constant]],
     target_bindings: dict[Variable, list[Variable | Constant]],
@@ -182,9 +188,25 @@ def resolve_bindings(
             else:
                 source_substitutions[source_var] = target_var
 
+    # TODO: handle binding labels properly and delete this hack
+    def hacky_add_binding_labels(
+        substitutions: dict[Variable, Variable | Constant], label: BindingLabel
+    ) -> SubstitutionsMap:
+        labeled_bindings: dict[Variable, tuple[BindingLabel, Variable] | Constant] = {}
+        for var, binding in substitutions.items():
+            if isinstance(binding, Constant):
+                labeled_bindings[var] = binding
+            else:
+                labeled_bindings[var] = (label, binding)
+        return Map(labeled_bindings)
+
     return Unification(
-        source_substitutions=Map(source_substitutions),
-        target_substitutions=Map(target_substitutions),
+        source_substitutions=hacky_add_binding_labels(
+            source_substitutions, TARGET_BINDING_LABEL
+        ),
+        target_substitutions=hacky_add_binding_labels(
+            target_substitutions, SOURCE_BINDING_LABEL
+        ),
         similarity=cur_similarity,
     )
 
