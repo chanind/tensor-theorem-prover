@@ -1,7 +1,8 @@
 from __future__ import annotations
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Iterable, List, Optional, Sequence, cast
+from typing_extensions import Literal
 from immutables import Map
 
 from amr_reasoner.prover.types import (
@@ -89,139 +90,160 @@ def unify_terms(
             if cur_similarity < min_similarity_threshold:
                 return None
 
+    binding_groups = find_binding_groups(source_bindings, target_bindings)
     return resolve_bindings(
-        source_bindings=source_bindings,
-        target_bindings=target_bindings,
+        binding_groups=binding_groups,
         similarity=cur_similarity,
         similarity_func=similarity_func,
         min_similarity_threshold=min_similarity_threshold,
     )
 
 
-# TODO: rewrite this method to properly handle binding labels and recursive var substitutions
-def resolve_bindings(
+@dataclass
+class BindingGroup:
+    source_variables: set[Variable] = field(default_factory=set)
+    target_variables: set[Variable] = field(default_factory=set)
+    constants: set[Constant] = field(default_factory=set)
+    # hack to make this deterministic, since otherwise we'll pick elements at random from the sets
+    first_constant: Optional[Constant] = None
+    first_source_variable: Variable | None = None
+    first_target_variable: Variable | None = None
+
+    def add_variable(self, variable: Variable, is_source_var: bool) -> None:
+        if is_source_var:
+            self.source_variables.add(variable)
+            if self.first_source_variable is None:
+                self.first_source_variable = variable
+        else:
+            self.target_variables.add(variable)
+            if self.first_target_variable is None:
+                self.first_target_variable = variable
+
+    def has_variable(self, variable: Variable, is_source_var: bool) -> bool:
+        if is_source_var:
+            return variable in self.source_variables
+        else:
+            return variable in self.target_variables
+
+    def add_constant(self, constant: Constant) -> None:
+        self.constants.add(constant)
+        if self.first_constant is None:
+            self.first_constant = constant
+
+
+def find_binding_groups(
     source_bindings: dict[Variable, list[Variable | Constant]],
     target_bindings: dict[Variable, list[Variable | Constant]],
+) -> list[BindingGroup]:
+    """
+    Find all groups of variables/constants that are bound together
+    """
+    binding_groups = []
+    # keep a set of tuples of <is_source_var, variable> to keep track of which variables we still need to group
+    remaining_variables = set(map(lambda v: (True, v), source_bindings.keys())) | set(
+        map(lambda v: (False, v), target_bindings.keys())
+    )
+
+    while len(remaining_variables) > 0:
+        is_source_var, cur_var = remaining_variables.pop()
+        binding_group = BindingGroup()
+        populate_binding_group(
+            binding_group,
+            cur_var,
+            is_source_var,
+            source_bindings,
+            target_bindings,
+        )
+        binding_groups.append(binding_group)
+        remaining_variables -= set(
+            map(lambda v: (True, v), binding_group.source_variables)
+        ) | set(map(lambda v: (False, v), binding_group.target_variables))
+
+    return binding_groups
+
+
+def populate_binding_group(
+    binding_group: BindingGroup,
+    cur_var: Variable,
+    is_source_var: bool,
+    source_bindings: dict[Variable, list[Variable | Constant]],
+    target_bindings: dict[Variable, list[Variable | Constant]],
+) -> None:
+    """Recursively populate a binding group in-place with all variables/constants that are bound together"""
+    binding_group.add_variable(cur_var, is_source_var)
+    cur_bindings = (
+        source_bindings[cur_var] if is_source_var else target_bindings[cur_var]
+    )
+    for binding in cur_bindings:
+        if isinstance(binding, Variable):
+            if not binding_group.has_variable(binding, not is_source_var):
+                populate_binding_group(
+                    binding_group,
+                    binding,
+                    not is_source_var,
+                    source_bindings,
+                    target_bindings,
+                )
+        else:
+            binding_group.add_constant(binding)
+
+
+# TODO: rewrite this method to properly handle binding labels and recursive var substitutions
+def resolve_bindings(
+    binding_groups: Iterable[BindingGroup],
     similarity: float,
     similarity_func: SimilarityFunc,
     min_similarity_threshold: float,
 ) -> Unification | None:
-    source_substitutions: dict[Variable, Variable | Constant] = {}
-    target_substitutions: dict[Variable, Variable | Constant] = {}
+    source_substitutions: dict[Variable, Constant | tuple[BindingLabel, Variable]] = {}
+    target_substitutions: dict[Variable, Constant | tuple[BindingLabel, Variable]] = {}
     cur_similarity = similarity
-
-    # first, bind all constants to source variables and all linked targets
-    for source_var, bindings in source_bindings.items():
-        constants = [binding for binding in bindings if isinstance(binding, Constant)]
-        linked_target_variables = [
-            binding for binding in bindings if isinstance(binding, Variable)
-        ]
-        existing_binding = source_substitutions.get(source_var)
-        if isinstance(existing_binding, Constant):
-            constants.append(existing_binding)
-        if len(constants) > 0:
-            constant = constants[-1]
-            cur_similarity = resolve_constant_similarity(constants, similarity_func)
+    for binding_group in binding_groups:
+        # note which var we choose to assign this group to, so we don't accidentally try to sub a var with itself
+        skip_source_var: Variable | None = None
+        skip_target_var: Variable | None = None
+        binding: Constant | tuple[BindingLabel, Variable]
+        if binding_group.first_constant:
+            binding = binding_group.first_constant
+            cur_similarity = resolve_constant_similarity(
+                binding_group.constants, similarity_func
+            )
             if cur_similarity < min_similarity_threshold:
                 return None
-            source_substitutions[source_var] = constant
-            for target_var in linked_target_variables:
-                existing_target_var_binding = target_substitutions.get(target_var)
-                if isinstance(existing_target_var_binding, Constant):
-                    cur_similarity = resolve_constant_similarity(
-                        [existing_target_var_binding, constant], similarity_func
-                    )
-                    if cur_similarity < min_similarity_threshold:
-                        return None
-                target_substitutions[target_var] = constant
-    # now, do the reverse for target to source
-    for target_var, bindings in target_bindings.items():
-        constants = [binding for binding in bindings if isinstance(binding, Constant)]
-        linked_source_variables = [
-            binding for binding in bindings if isinstance(binding, Variable)
-        ]
-        existing_binding = target_substitutions.get(target_var)
-        if isinstance(existing_binding, Constant):
-            constants.append(existing_binding)
-        if len(constants) > 0:
-            constant = constants[-1]
-            cur_similarity = resolve_constant_similarity(constants, similarity_func)
-            if cur_similarity < min_similarity_threshold:
-                return None
-            target_substitutions[target_var] = constant
-            for source_var in linked_source_variables:
-                existing_source_var_binding = source_substitutions.get(source_var)
-                if isinstance(existing_source_var_binding, Constant):
-                    cur_similarity = resolve_constant_similarity(
-                        [existing_source_var_binding, constant], similarity_func
-                    )
-                    if cur_similarity < min_similarity_threshold:
-                        return None
-                else:
-                    source_substitutions[source_var] = constant
-    # now bind any remaining variables to each other
-    unmapped_source_vars = set(source_bindings.keys()) - set(
-        source_substitutions.keys()
-    )
-    unmapped_target_vars = set(target_bindings.keys()) - set(
-        target_substitutions.keys()
-    )
-    for source_var in unmapped_source_vars:
-        # these have to all be variables, else it would have been bound already
-        target_vars = cast(List[Variable], source_bindings[source_var])
-        existing_binding = target_substitutions.get(source_var)
-        for target_var in target_vars:
-            if existing_binding == target_var:
-                continue
-            if target_var in target_substitutions:
-                source_substitutions[source_var] = target_substitutions[target_var]
-            else:
-                target_substitutions[target_var] = source_var
-    for target_var in unmapped_target_vars:
-        source_vars = cast(List[Variable], target_bindings[target_var])
-        existing_binding = target_substitutions.get(target_var)
-        for source_var in source_vars:
-            if existing_binding == source_var:
-                continue
-            if source_var in source_substitutions:
-                target_substitutions[target_var] = source_substitutions[source_var]
-            else:
-                source_substitutions[source_var] = target_var
-
-    # TODO: handle binding labels properly and delete this hack
-    def hacky_add_binding_labels(
-        substitutions: dict[Variable, Variable | Constant], label: BindingLabel
-    ) -> SubstitutionsMap:
-        labeled_bindings: dict[Variable, tuple[BindingLabel, Variable] | Constant] = {}
-        for var, binding in substitutions.items():
-            if isinstance(binding, Constant):
-                labeled_bindings[var] = binding
-            else:
-                labeled_bindings[var] = (label, binding)
-        return Map(labeled_bindings)
+        elif binding_group.first_source_variable:
+            binding = (SOURCE_BINDING_LABEL, binding_group.first_source_variable)
+            skip_source_var = binding_group.first_source_variable
+        elif binding_group.first_target_variable:
+            binding = (TARGET_BINDING_LABEL, binding_group.first_target_variable)
+            skip_target_var = binding_group.first_target_variable
+        else:
+            raise ValueError("Binding group has no variables/constants")
+        for source_var in binding_group.source_variables:
+            if source_var is not skip_source_var:
+                source_substitutions[source_var] = binding
+        for target_var in binding_group.target_variables:
+            if target_var is not skip_target_var:
+                target_substitutions[target_var] = binding
 
     return Unification(
-        source_substitutions=hacky_add_binding_labels(
-            source_substitutions, TARGET_BINDING_LABEL
-        ),
-        target_substitutions=hacky_add_binding_labels(
-            target_substitutions, SOURCE_BINDING_LABEL
-        ),
+        source_substitutions=Map(source_substitutions),
+        target_substitutions=Map(target_substitutions),
         similarity=cur_similarity,
     )
 
 
 def resolve_constant_similarity(
-    constants: Sequence[Constant],
+    constants: set[Constant],
     similarity_func: SimilarityFunc,
 ) -> float:
     if len(constants) <= 1:
         return 1.0
     # TODO: this is inneficient for lots of constants, think of a better solution
     # Need to check both direction similarity since there's no inherent directionality here between constants here
+    # maybe we can add a separate similarity function for constants that's bidirectional?
     return min(
-        similarity_func(constants[i], constants[j])
-        for i in range(len(constants))
-        for j in range(len(constants))
-        if j != i
+        similarity_func(constant1, constant2)
+        for constant1 in constants
+        for constant2 in constants
+        if constant1 != constant2
     )

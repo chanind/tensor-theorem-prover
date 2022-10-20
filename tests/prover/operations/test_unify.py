@@ -95,7 +95,6 @@ def test_unify_with_source_var_to_target_var_with_repeat_constants() -> None:
     assert unify(source, target) == unification({X: const1}, {Y: const1, Z: const1})
 
 
-@pytest.mark.skip(reason="Will fix chained vars properly later")
 def test_unify_with_chained_vars() -> None:
     source = pred1(X, X, Y, Y, Z, Z)
     target = pred1(Y, X, X, Z, Z, const2)

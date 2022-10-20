@@ -8,7 +8,7 @@ from amr_reasoner.types import Constant, Variable
 from amr_reasoner.normalize import CNFDisjunction
 
 # S means 'source', T means 'target'
-BindingLabel = Union[Literal["S"], Literal["T"]]
+BindingLabel = Literal["S", "T"]
 SOURCE_BINDING_LABEL: BindingLabel = "S"
 TARGET_BINDING_LABEL: BindingLabel = "T"
 
