@@ -40,18 +40,18 @@ def normalize_quantifiers(clause: NNFClause) -> SimplifiedClause:
     name_generator = SkolemNameGenerator()
     universal_var_names = find_unbound_var_names(clause)
     skolem_map: dict[str, BoundFunction] = {}
-    return normalize_quantifiers_recursive(
+    return _normalize_quantifiers_recursive(
         clause, name_generator, universal_var_names, skolem_map
     )
 
 
-def normalize_quantifiers_recursive(
+def _normalize_quantifiers_recursive(
     clause: NNFClause,
     name_generator: SkolemNameGenerator,
     universal_var_names: set[str],
     skolem_map: dict[str, BoundFunction],
 ) -> SimplifiedClause:
-    normalize_term = lambda term: normalize_quantifiers_recursive(
+    normalize_term = lambda term: _normalize_quantifiers_recursive(
         assert_nnf(term), name_generator, universal_var_names, skolem_map
     )
     if isinstance(clause, And):
@@ -62,7 +62,7 @@ def normalize_quantifiers_recursive(
         return Not(normalize_term(clause.body))
     if isinstance(clause, All):
         next_universal_var_names = universal_var_names | {clause.variable.name}
-        return normalize_quantifiers_recursive(
+        return _normalize_quantifiers_recursive(
             assert_nnf(clause.body),
             name_generator,
             next_universal_var_names,
@@ -76,7 +76,7 @@ def normalize_quantifiers_recursive(
                 *map(Variable, sorted(universal_var_names))
             ),
         }
-        return normalize_quantifiers_recursive(
+        return _normalize_quantifiers_recursive(
             assert_nnf(clause.body),
             name_generator,
             universal_var_names,
@@ -84,13 +84,13 @@ def normalize_quantifiers_recursive(
         )
 
     if isinstance(clause, Atom):
-        terms = normalize_terms_recursive(clause.terms, skolem_map)
+        terms = _normalize_terms_recursive(clause.terms, skolem_map)
         return Atom(clause.predicate, terms)
     else:
         raise ValueError(f"Unknown clause type: {type(clause)}")
 
 
-def normalize_terms_recursive(
+def _normalize_terms_recursive(
     terms: Iterable[Variable | Constant | BoundFunction],
     skolem_map: dict[str, BoundFunction],
 ) -> tuple[Variable | Constant | BoundFunction, ...]:
@@ -105,7 +105,7 @@ def normalize_terms_recursive(
             normalized_terms.append(
                 BoundFunction(
                     term.function,
-                    normalize_terms_recursive(term.terms, skolem_map),
+                    _normalize_terms_recursive(term.terms, skolem_map),
                 )
             )
         else:

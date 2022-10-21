@@ -5,7 +5,7 @@ from amr_reasoner.normalize.to_cnf import CNFDisjunction, CNFLiteral
 
 from amr_reasoner.prover.types import ProofState, SubstitutionsMap
 from amr_reasoner.similarity import SimilarityFunc
-from amr_reasoner.types import Atom, Constant, Term, Variable
+from amr_reasoner.types import Atom, Term, Variable
 
 from .unify import Unification, unify
 
@@ -165,13 +165,7 @@ def _perform_substitution(
         terms: list[Term] = []
         for term in literal.atom.terms:
             if isinstance(term, Variable) and term in substitutions:
-                substitution = substitutions[term]
-                new_term: Term = (
-                    substitution
-                    if isinstance(substitution, Constant)
-                    else substitution[1]
-                )
-                terms.append(new_term)
+                terms.append(substitutions[term])
             else:
                 terms.append(term)
         new_atom = Atom(literal.atom.predicate, tuple(terms))

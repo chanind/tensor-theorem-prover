@@ -1,25 +1,18 @@
 from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional, Sequence, cast
-from typing_extensions import Literal
-from immutables import Map
+from typing import Iterable, Optional
 
-from amr_reasoner.prover.types import (
-    SOURCE_BINDING_LABEL,
-    TARGET_BINDING_LABEL,
-    BindingLabel,
-    SubstitutionsMap,
-)
+from amr_reasoner.prover.types import SubstitutionsMap
 from amr_reasoner.similarity import SimilarityFunc, symbol_compare
 from amr_reasoner.types import Atom, Constant, Variable, BoundFunction, Term
 
 
 @dataclass
 class Unification:
-    similarity: float
-    source_substitutions: SubstitutionsMap = Map()
-    target_substitutions: SubstitutionsMap = Map()
+    source_substitutions: SubstitutionsMap = field(default_factory=dict)
+    target_substitutions: SubstitutionsMap = field(default_factory=dict)
+    similarity: float = 1.0
 
 
 def unify(
@@ -49,7 +42,7 @@ def unify(
     if similarity < min_similarity_threshold:
         return None
 
-    return unify_terms(
+    return _unify_terms(
         source.terms,
         target.terms,
         similarity,
@@ -58,7 +51,7 @@ def unify(
     )
 
 
-def unify_terms(
+def _unify_terms(
     source_terms: Iterable[Term],
     target_terms: Iterable[Term],
     similarity: float,
@@ -91,7 +84,7 @@ def unify_terms(
                 return None
 
     binding_groups = find_binding_groups(source_bindings, target_bindings)
-    return resolve_bindings(
+    return _resolve_bindings(
         binding_groups=binding_groups,
         similarity=cur_similarity,
         similarity_func=similarity_func,
@@ -101,6 +94,10 @@ def unify_terms(
 
 @dataclass
 class BindingGroup:
+    """
+    Helper Class to handle the grouping of variables and constants that are bound to each other during unification
+    """
+
     source_variables: set[Variable] = field(default_factory=set)
     target_variables: set[Variable] = field(default_factory=set)
     constants: set[Constant] = field(default_factory=set)
@@ -147,7 +144,7 @@ def find_binding_groups(
     while len(remaining_variables) > 0:
         is_source_var, cur_var = remaining_variables.pop()
         binding_group = BindingGroup()
-        populate_binding_group(
+        _populate_binding_group(
             binding_group,
             cur_var,
             is_source_var,
@@ -162,7 +159,7 @@ def find_binding_groups(
     return binding_groups
 
 
-def populate_binding_group(
+def _populate_binding_group(
     binding_group: BindingGroup,
     cur_var: Variable,
     is_source_var: bool,
@@ -177,7 +174,7 @@ def populate_binding_group(
     for binding in cur_bindings:
         if isinstance(binding, Variable):
             if not binding_group.has_variable(binding, not is_source_var):
-                populate_binding_group(
+                _populate_binding_group(
                     binding_group,
                     binding,
                     not is_source_var,
@@ -189,32 +186,32 @@ def populate_binding_group(
 
 
 # TODO: rewrite this method to properly handle binding labels and recursive var substitutions
-def resolve_bindings(
+def _resolve_bindings(
     binding_groups: Iterable[BindingGroup],
     similarity: float,
     similarity_func: SimilarityFunc,
     min_similarity_threshold: float,
 ) -> Unification | None:
-    source_substitutions: dict[Variable, Constant | tuple[BindingLabel, Variable]] = {}
-    target_substitutions: dict[Variable, Constant | tuple[BindingLabel, Variable]] = {}
+    source_substitutions: SubstitutionsMap = {}
+    target_substitutions: SubstitutionsMap = {}
     cur_similarity = similarity
     for binding_group in binding_groups:
         # note which var we choose to assign this group to, so we don't accidentally try to sub a var with itself
         skip_source_var: Variable | None = None
         skip_target_var: Variable | None = None
-        binding: Constant | tuple[BindingLabel, Variable]
+        binding: Constant | Variable
         if binding_group.first_constant:
             binding = binding_group.first_constant
-            cur_similarity = resolve_constant_similarity(
+            cur_similarity = _resolve_constant_similarity(
                 binding_group.constants, similarity_func
             )
             if cur_similarity < min_similarity_threshold:
                 return None
         elif binding_group.first_source_variable:
-            binding = (SOURCE_BINDING_LABEL, binding_group.first_source_variable)
+            binding = binding_group.first_source_variable
             skip_source_var = binding_group.first_source_variable
         elif binding_group.first_target_variable:
-            binding = (TARGET_BINDING_LABEL, binding_group.first_target_variable)
+            binding = binding_group.first_target_variable
             skip_target_var = binding_group.first_target_variable
         else:
             raise ValueError("Binding group has no variables/constants")
@@ -226,13 +223,13 @@ def resolve_bindings(
                 target_substitutions[target_var] = binding
 
     return Unification(
-        source_substitutions=Map(source_substitutions),
-        target_substitutions=Map(target_substitutions),
+        source_substitutions=source_substitutions,
+        target_substitutions=target_substitutions,
         similarity=cur_similarity,
     )
 
 
-def resolve_constant_similarity(
+def _resolve_constant_similarity(
     constants: set[Constant],
     similarity_func: SimilarityFunc,
 ) -> float:

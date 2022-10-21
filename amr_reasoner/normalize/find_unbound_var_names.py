@@ -39,11 +39,11 @@ def find_unbound_var_names(clause: Clause, bound_vars: set[str] = set()) -> set[
             find_unbound_var_names(clause.body, bound_vars | {clause.variable.name})
         )
     elif isinstance(clause, Atom):
-        unbound_vars.update(find_unbound_var_names_in_terms(clause.terms, bound_vars))
+        unbound_vars.update(_find_unbound_var_names_in_terms(clause.terms, bound_vars))
     return unbound_vars
 
 
-def find_unbound_var_names_in_terms(
+def _find_unbound_var_names_in_terms(
     terms: Iterable[Constant | Variable | BoundFunction], bound_vars: set[str]
 ) -> set[str]:
     unbound_vars: set[str] = set()
@@ -52,5 +52,7 @@ def find_unbound_var_names_in_terms(
             if term.name not in bound_vars:
                 unbound_vars.add(term.name)
         elif isinstance(term, BoundFunction):
-            unbound_vars.update(find_unbound_var_names_in_terms(term.terms, bound_vars))
+            unbound_vars.update(
+                _find_unbound_var_names_in_terms(term.terms, bound_vars)
+            )
     return unbound_vars

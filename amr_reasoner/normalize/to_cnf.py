@@ -44,12 +44,12 @@ def to_cnf(clause: Clause) -> set[CNFDisjunction]:
     nnf_clause = normalize_variables(nnf_clause)
     simplified_clause = normalize_quantifiers(nnf_clause)
     normalized_clause = normalize_conjunctions(simplified_clause)
-    return norm_clause_to_cnf(normalized_clause)
+    return _norm_clause_to_cnf(normalized_clause)
 
 
-def norm_clause_to_cnf(clause: SimplifiedClause) -> set[CNFDisjunction]:
+def _norm_clause_to_cnf(clause: SimplifiedClause) -> set[CNFDisjunction]:
     if isinstance(clause, Atom) or isinstance(clause, Not):
-        literal = element_to_cnf_literal(clause)
+        literal = _element_to_cnf_literal(clause)
         return set([CNFDisjunction(frozenset([literal]))])
     if isinstance(clause, Not):
         # this should already be basically in CNF, so there can only be atoms inside of a Not
@@ -60,17 +60,17 @@ def norm_clause_to_cnf(clause: SimplifiedClause) -> set[CNFDisjunction]:
         for term in clause.args:
             literals = set()
             if isinstance(term, Atom) or isinstance(term, Not):
-                literals.add(element_to_cnf_literal(term))
+                literals.add(_element_to_cnf_literal(term))
             elif isinstance(term, Or):
                 for element in term.args:
                     assert isinstance(element, Atom) or isinstance(element, Not)
-                    literals.add(element_to_cnf_literal(element))
+                    literals.add(_element_to_cnf_literal(element))
             disjunctions.add(CNFDisjunction(frozenset(literals)))
         return set(disjunctions)
     raise ValueError(f"Unnormalized clause type in CNF conversion: {type(clause)}")
 
 
-def element_to_cnf_literal(element: Atom | Not) -> CNFLiteral:
+def _element_to_cnf_literal(element: Atom | Not) -> CNFLiteral:
     if isinstance(element, Atom):
         return CNFLiteral(element, True)
     if isinstance(element, Not):

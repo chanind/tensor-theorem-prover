@@ -30,13 +30,13 @@ def normalize_variables(clause: NNFClause) -> NNFClause:
     name_generator = VarNameGenerator()
     unbound_var_names = sorted(find_unbound_var_names(clause))
     remap_var_names = {name: name_generator(name) for name in unbound_var_names}
-    return normalize_variables_recursive(clause, name_generator, remap_var_names)
+    return _normalize_variables_recursive(clause, name_generator, remap_var_names)
 
 
-def normalize_variables_recursive(
+def _normalize_variables_recursive(
     clause: NNFClause, name_generator: VarNameGenerator, remap_var_names: dict[str, str]
 ) -> NNFClause:
-    normalize_term = lambda term: normalize_variables_recursive(
+    normalize_term = lambda term: _normalize_variables_recursive(
         assert_nnf(term), name_generator, remap_var_names
     )
     if isinstance(clause, And):
@@ -46,21 +46,21 @@ def normalize_variables_recursive(
     if isinstance(clause, Not):
         return Not(normalize_term(clause.body))
     if isinstance(clause, Atom):
-        terms = normalize_terms_recursive(clause.terms, remap_var_names)
+        terms = _normalize_terms_recursive(clause.terms, remap_var_names)
         return Atom(clause.predicate, terms)
     new_var_name = name_generator(clause.variable.name)
     next_remap = {**remap_var_names, clause.variable.name: new_var_name}
     if isinstance(clause, All):
         return All(
             Variable(new_var_name),
-            normalize_variables_recursive(
+            _normalize_variables_recursive(
                 assert_nnf(clause.body), name_generator, next_remap
             ),
         )
     if isinstance(clause, Exists):
         return Exists(
             Variable(new_var_name),
-            normalize_variables_recursive(
+            _normalize_variables_recursive(
                 assert_nnf(clause.body), name_generator, next_remap
             ),
         )
@@ -68,7 +68,7 @@ def normalize_variables_recursive(
         raise ValueError(f"Unknown clause type: {type(clause)}")
 
 
-def normalize_terms_recursive(
+def _normalize_terms_recursive(
     terms: Iterable[Variable | Constant | BoundFunction],
     remap_var_names: dict[str, str],
 ) -> tuple[Variable | Constant | BoundFunction, ...]:
@@ -84,7 +84,7 @@ def normalize_terms_recursive(
             normalized_terms.append(
                 BoundFunction(
                     term.function,
-                    normalize_terms_recursive(term.terms, remap_var_names),
+                    _normalize_terms_recursive(term.terms, remap_var_names),
                 )
             )
         else:

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from immutables import Map
-
 from amr_reasoner.normalize.to_cnf import CNFDisjunction, CNFLiteral
 from amr_reasoner.prover.operations.resolve import (
     _find_unused_variables,
@@ -37,9 +35,9 @@ def test_find_unused_variables() -> None:
         CNFLiteral(pred1(X, const1), True),
         CNFLiteral(pred2(Y), False),
     ]
-    assert _find_unused_variables(literals, Map({})) == {X, Y}
-    assert _find_unused_variables(literals, Map({Y: const1})) == {X}
-    assert _find_unused_variables(literals, Map({Y: const1, X: const2})) == set()
+    assert _find_unused_variables(literals, {}) == {X, Y}
+    assert _find_unused_variables(literals, {Y: const1}) == {X}
+    assert _find_unused_variables(literals, {Y: const1, X: const2}) == set()
 
 
 def test_find_non_overlapping_var_names_leaves_vars_unchanged_if_no_overlaps() -> None:
@@ -80,16 +78,28 @@ def test_rename_variables_in_literals() -> None:
     ]
 
 
-def test_perform_substitution() -> None:
+def test_perform_substitution_basic() -> None:
     literals = [
         CNFLiteral(pred1(X, const1), True),
         CNFLiteral(pred2(Y), False),
     ]
-    substitution: SubstitutionsMap = Map({X: const2, Y: const1})
-    substituted_literals = _perform_substitution(literals, substitution)
+    substitutions: SubstitutionsMap = {X: const2, Y: const1}
+    substituted_literals = _perform_substitution(literals, substitutions)
     assert substituted_literals == [
         CNFLiteral(pred1(const2, const1), True),
         CNFLiteral(pred2(const1), False),
+    ]
+
+
+def test_perform_substitution_with_repeated_vars() -> None:
+    literals = [CNFLiteral(pred1(X, Y), True)]
+    substitutions: SubstitutionsMap = {
+        X: Y,
+        Y: const2,
+    }
+    substituted_literals = _perform_substitution(literals, substitutions)
+    assert substituted_literals == [
+        CNFLiteral(pred1(Y, const2), True),
     ]
 
 
@@ -109,8 +119,8 @@ def test_build_resolvent() -> None:
     target_disjunction = CNFDisjunction(frozenset(target_literals))
     unification = Unification(
         similarity=1.0,
-        source_substitutions=Map({Y: const1}),
-        target_substitutions=Map({X: const2}),
+        source_substitutions={Y: const1},
+        target_substitutions={X: const2},
     )
     resolvent = _build_resolvent(
         source=source_disjunction,

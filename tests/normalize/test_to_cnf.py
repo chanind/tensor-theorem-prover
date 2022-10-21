@@ -2,7 +2,7 @@ from __future__ import annotations
 from amr_reasoner.normalize.to_cnf import (
     CNFDisjunction,
     to_cnf,
-    element_to_cnf_literal,
+    _element_to_cnf_literal,
 )
 from amr_reasoner.types import (
     And,
@@ -32,7 +32,7 @@ Y = Variable("Y")
 
 def to_cnf_helper(clauses: list[list[Atom | Not]]) -> set[CNFDisjunction]:
     return set(
-        CNFDisjunction(frozenset(element_to_cnf_literal(elm) for elm in clause))
+        CNFDisjunction(frozenset(_element_to_cnf_literal(elm) for elm in clause))
         for clause in clauses
     )
 

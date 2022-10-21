@@ -1,18 +1,12 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Tuple, Union, Optional
-from typing_extensions import Literal
-from immutables import Map
+from dataclasses import dataclass, field
+from typing import Dict, Union, Optional
 
 from amr_reasoner.types import Constant, Variable
 from amr_reasoner.normalize import CNFDisjunction
 
-# S means 'source', T means 'target'
-BindingLabel = Literal["S", "T"]
-SOURCE_BINDING_LABEL: BindingLabel = "S"
-TARGET_BINDING_LABEL: BindingLabel = "T"
 
-SubstitutionsMap = Map[Variable, Union[Constant, Tuple[BindingLabel, Variable]]]
+SubstitutionsMap = Dict[Variable, Union[Constant, Variable]]
 
 
 @dataclass
@@ -21,8 +15,8 @@ class ProofState:
     source: Optional[CNFDisjunction] = None
     target: Optional[CNFDisjunction] = None
     resolvent: Optional[CNFDisjunction] = None
-    source_substitutions: SubstitutionsMap = Map()
-    target_substitutions: SubstitutionsMap = Map()
+    source_substitutions: SubstitutionsMap = field(default_factory=dict)
+    target_substitutions: SubstitutionsMap = field(default_factory=dict)
     depth: int = 0
-    substitutions: SubstitutionsMap = Map()
+    substitutions: SubstitutionsMap = field(default_factory=dict)
     parent: Optional[ProofState] = None
