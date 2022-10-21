@@ -1,7 +1,7 @@
 from __future__ import annotations
-from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional, Tuple
+from typing_extensions import Literal
 
 from amr_reasoner.prover.types import SubstitutionsMap
 from amr_reasoner.similarity import SimilarityFunc, symbol_compare
@@ -26,9 +26,6 @@ def unify(
     If no similarity_func is provided, or if either atom lacks a embedding,
     then it will do an exact match on the symbols themselves
 
-    Based on unification module from "End-to-End Differentiable Proving" by Rocktäschel et al.
-    https://arxiv.org/abs/1705.11040
-
     Returns a tuple with new substitutions and new similariy if successful or None if the unification fails
     """
     if len(source.terms) != len(target.terms):
@@ -51,6 +48,12 @@ def unify(
     )
 
 
+BindingLabel = Literal["source", "target"]
+LabeledTerm = Tuple[BindingLabel, Term]
+
+SubstitutionSet = Dict[Tuple[BindingLabel, Variable], LabeledTerm]
+
+
 def _unify_terms(
     source_terms: Iterable[Term],
     target_terms: Iterable[Term],
@@ -58,189 +61,164 @@ def _unify_terms(
     similarity_func: SimilarityFunc,
     min_similarity_threshold: float,
 ) -> Unification | None:
+    """
+    Unification with optional vector similarity, based on Robinson's 1965 algorithm, as described in:
+    "Comparing unification algorithms in first-order theorem proving", Hoder et al. 2009
+    https://www.cs.man.ac.uk/~hoderk/ubench/unification_full.pdf
+    """
     cur_similarity = similarity
-
-    source_bindings: dict[Variable, list[Variable | Constant]] = defaultdict(list)
-    target_bindings: dict[Variable, list[Variable | Constant]] = defaultdict(list)
-
+    substitutions: SubstitutionSet = {}
     for source_term, target_term in zip(source_terms, target_terms):
-        # TODO: implement bound function unification
-        if isinstance(source_term, BoundFunction) or isinstance(
-            target_term, BoundFunction
-        ):
-            raise NotImplementedError("BoundFunction unification not implemented")
-        if isinstance(source_term, Variable):
-            source_bindings[source_term].append(target_term)
-        if isinstance(target_term, Variable):
-            target_bindings[target_term].append(source_term)
-
-        if isinstance(source_term, Constant) and isinstance(target_term, Constant):
-            cur_similarity = min(
-                cur_similarity,
-                similarity_func(source_term, target_term),
-            )
-            # abort early if the predicate similarity is too low
-            if cur_similarity < min_similarity_threshold:
-                return None
-
-    binding_groups = find_binding_groups(source_bindings, target_bindings)
-    return _resolve_bindings(
-        binding_groups=binding_groups,
-        similarity=cur_similarity,
-        similarity_func=similarity_func,
-        min_similarity_threshold=min_similarity_threshold,
-    )
-
-
-@dataclass
-class BindingGroup:
-    """
-    Helper Class to handle the grouping of variables and constants that are bound to each other during unification
-    """
-
-    source_variables: set[Variable] = field(default_factory=set)
-    target_variables: set[Variable] = field(default_factory=set)
-    constants: set[Constant] = field(default_factory=set)
-    # hack to make this deterministic, since otherwise we'll pick elements at random from the sets
-    first_constant: Optional[Constant] = None
-    first_source_variable: Variable | None = None
-    first_target_variable: Variable | None = None
-
-    def add_variable(self, variable: Variable, is_source_var: bool) -> None:
-        if is_source_var:
-            self.source_variables.add(variable)
-            if self.first_source_variable is None:
-                self.first_source_variable = variable
-        else:
-            self.target_variables.add(variable)
-            if self.first_target_variable is None:
-                self.first_target_variable = variable
-
-    def has_variable(self, variable: Variable, is_source_var: bool) -> bool:
-        if is_source_var:
-            return variable in self.source_variables
-        else:
-            return variable in self.target_variables
-
-    def add_constant(self, constant: Constant) -> None:
-        self.constants.add(constant)
-        if self.first_constant is None:
-            self.first_constant = constant
-
-
-def find_binding_groups(
-    source_bindings: dict[Variable, list[Variable | Constant]],
-    target_bindings: dict[Variable, list[Variable | Constant]],
-) -> list[BindingGroup]:
-    """
-    Find all groups of variables/constants that are bound together
-    """
-    binding_groups = []
-    # keep a set of tuples of <is_source_var, variable> to keep track of which variables we still need to group
-    remaining_variables = set(map(lambda v: (True, v), source_bindings.keys())) | set(
-        map(lambda v: (False, v), target_bindings.keys())
-    )
-
-    while len(remaining_variables) > 0:
-        is_source_var, cur_var = remaining_variables.pop()
-        binding_group = BindingGroup()
-        _populate_binding_group(
-            binding_group,
-            cur_var,
-            is_source_var,
-            source_bindings,
-            target_bindings,
+        result = _unify_term_pair(
+            source_term,
+            target_term,
+            substitutions,
+            cur_similarity,
+            similarity_func,
+            min_similarity_threshold,
         )
-        binding_groups.append(binding_group)
-        remaining_variables -= set(
-            map(lambda v: (True, v), binding_group.source_variables)
-        ) | set(map(lambda v: (False, v), binding_group.target_variables))
+        if result is None:
+            return None
+        substitutions, cur_similarity = result
 
-    return binding_groups
-
-
-def _populate_binding_group(
-    binding_group: BindingGroup,
-    cur_var: Variable,
-    is_source_var: bool,
-    source_bindings: dict[Variable, list[Variable | Constant]],
-    target_bindings: dict[Variable, list[Variable | Constant]],
-) -> None:
-    """Recursively populate a binding group in-place with all variables/constants that are bound together"""
-    binding_group.add_variable(cur_var, is_source_var)
-    cur_bindings = (
-        source_bindings[cur_var] if is_source_var else target_bindings[cur_var]
-    )
-    for binding in cur_bindings:
-        if isinstance(binding, Variable):
-            if not binding_group.has_variable(binding, not is_source_var):
-                _populate_binding_group(
-                    binding_group,
-                    binding,
-                    not is_source_var,
-                    source_bindings,
-                    target_bindings,
-                )
+    source_substitutions: SubstitutionsMap = {}
+    target_substitutions: SubstitutionsMap = {}
+    for labeled_var in substitutions.keys():
+        # need to recreate this and explicitly tell MyPy that it's a LabeledTerm because it can't infer it somehow
+        label, var = labeled_var
+        if label == "source":
+            source_substitutions[var] = _resolve_labeled_term(
+                labeled_var, substitutions
+            )[1]
         else:
-            binding_group.add_constant(binding)
+            target_substitutions[var] = _resolve_labeled_term(
+                labeled_var, substitutions
+            )[1]
+    return Unification(source_substitutions, target_substitutions, cur_similarity)
 
 
-# TODO: rewrite this method to properly handle binding labels and recursive var substitutions
-def _resolve_bindings(
-    binding_groups: Iterable[BindingGroup],
+def _resolve_labeled_term(
+    labeled_term: LabeledTerm, substitutions: SubstitutionSet
+) -> LabeledTerm:
+    """
+    Resolve a labeled term by recursively following substitutions, part of Robinson's 1965 algorithm
+    """
+    label, term = labeled_term
+    if isinstance(term, Variable) and labeled_term in substitutions:
+        return _resolve_labeled_term(substitutions[(label, term)], substitutions)
+    return labeled_term
+
+
+def _check_var_occurrence(
+    var: Variable, term: Term, substitutions: SubstitutionSet, is_source_var: bool
+) -> bool:
+    """
+    Recursively check if variable occurs in a term, part of Robinson's 1965 algorithm
+    """
+    var_label: BindingLabel = "source" if is_source_var else "target"
+    labeled_var = (var_label, var)
+    # term is opposite label of var
+    term_label: BindingLabel = "target" if is_source_var else "source"
+    term_stack: list[LabeledTerm] = [(term_label, term)]
+    while term_stack:
+        cur_labeled_term = term_stack.pop()
+        cur_labeled_term = _resolve_labeled_term(cur_labeled_term, substitutions)
+        cur_label, cur_term = cur_labeled_term
+        comparison_vars: list[tuple[BindingLabel, Variable]] = []
+        if isinstance(cur_term, Variable):
+            comparison_vars.append((cur_label, cur_term))
+        elif isinstance(cur_term, BoundFunction):
+            for sub_term in cur_term.terms:
+                if isinstance(sub_term, Variable):
+                    comparison_vars.append((cur_label, sub_term))
+        for comparison_var in comparison_vars:
+            if comparison_var == labeled_var:
+                return False
+            elif comparison_var in substitutions:
+                term_stack.append(substitutions[comparison_var])
+    return True
+
+
+def _unify_term_pair(
+    source_term: Term,
+    target_term: Term,
+    substitutions: SubstitutionSet,
     similarity: float,
     similarity_func: SimilarityFunc,
     min_similarity_threshold: float,
-) -> Unification | None:
-    source_substitutions: SubstitutionsMap = {}
-    target_substitutions: SubstitutionsMap = {}
+) -> tuple[SubstitutionSet, float] | None:
+    """
+    Check if a pair of terms can be unified, part of Robinson's 1965 algorithm
+    """
+    pairs_stack: list[tuple[LabeledTerm, LabeledTerm]] = [
+        (("source", source_term), ("target", target_term))
+    ]
     cur_similarity = similarity
-    for binding_group in binding_groups:
-        # note which var we choose to assign this group to, so we don't accidentally try to sub a var with itself
-        skip_source_var: Variable | None = None
-        skip_target_var: Variable | None = None
-        binding: Constant | Variable
-        if binding_group.first_constant:
-            binding = binding_group.first_constant
-            cur_similarity = _resolve_constant_similarity(
-                binding_group.constants, similarity_func
-            )
-            if cur_similarity < min_similarity_threshold:
+    while pairs_stack:
+        cur_labeled_source_term, cur_labeled_target_term = pairs_stack.pop()
+        cur_labeled_source_term = _resolve_labeled_term(
+            cur_labeled_source_term, substitutions
+        )
+        cur_source_label, cur_source_term = cur_labeled_source_term
+        cur_labeled_target_term = _resolve_labeled_term(
+            cur_labeled_target_term, substitutions
+        )
+        cur_target_label, cur_target_term = cur_labeled_target_term
+        if isinstance(cur_source_term, Constant) and isinstance(
+            cur_target_term, Constant
+        ):
+            # if these are identical objects, no need to compare them, just continue on
+            if cur_source_term is not cur_target_term:
+                cur_similarity = min(
+                    cur_similarity,
+                    # TODO: should we add a separate similarity func for constants which is bidirectional?
+                    similarity_func(cur_source_term, cur_target_term),
+                )
+                if cur_similarity < min_similarity_threshold:
+                    return None
+        elif isinstance(cur_source_term, Variable):
+            if isinstance(cur_target_term, Variable):
+                # if both are variables, replace the target with the source
+                substitutions[
+                    (cur_target_label, cur_target_term)
+                ] = cur_labeled_source_term
+            elif _check_var_occurrence(
+                cur_source_term,
+                cur_target_term,
+                substitutions,
+                cur_source_label == "source",
+            ):
+                substitutions[
+                    (cur_source_label, cur_source_term)
+                ] = cur_labeled_target_term
+            else:
                 return None
-        elif binding_group.first_source_variable:
-            binding = binding_group.first_source_variable
-            skip_source_var = binding_group.first_source_variable
-        elif binding_group.first_target_variable:
-            binding = binding_group.first_target_variable
-            skip_target_var = binding_group.first_target_variable
-        else:
-            raise ValueError("Binding group has no variables/constants")
-        for source_var in binding_group.source_variables:
-            if source_var is not skip_source_var:
-                source_substitutions[source_var] = binding
-        for target_var in binding_group.target_variables:
-            if target_var is not skip_target_var:
-                target_substitutions[target_var] = binding
-
-    return Unification(
-        source_substitutions=source_substitutions,
-        target_substitutions=target_substitutions,
-        similarity=cur_similarity,
-    )
-
-
-def _resolve_constant_similarity(
-    constants: set[Constant],
-    similarity_func: SimilarityFunc,
-) -> float:
-    if len(constants) <= 1:
-        return 1.0
-    # TODO: this is inneficient for lots of constants, think of a better solution
-    # Need to check both direction similarity since there's no inherent directionality here between constants here
-    # maybe we can add a separate similarity function for constants that's bidirectional?
-    return min(
-        similarity_func(constant1, constant2)
-        for constant1 in constants
-        for constant2 in constants
-        if constant1 != constant2
-    )
+        elif isinstance(cur_target_term, Variable):
+            if _check_var_occurrence(
+                cur_target_term,
+                cur_source_term,
+                substitutions,
+                cur_target_label == "source",
+            ):
+                substitutions[
+                    (cur_target_label, cur_target_term)
+                ] = cur_labeled_source_term
+            else:
+                return None
+        elif isinstance(cur_source_term, BoundFunction) and isinstance(
+            cur_target_term, BoundFunction
+        ):
+            if cur_source_term.function != cur_target_term.function:
+                return None
+            if len(cur_source_term.terms) != len(cur_target_term.terms):
+                return None
+            for source_sub_term, target_sub_term in zip(
+                cur_source_term.terms, cur_target_term.terms
+            ):
+                pairs_stack.append(
+                    (
+                        (cur_source_label, source_sub_term),
+                        (cur_target_label, target_sub_term),
+                    )
+                )
+    return substitutions, cur_similarity
