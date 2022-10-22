@@ -1,6 +1,9 @@
 # Tensor Theorem Prover
+[![ci](https://img.shields.io/github/workflow/status/chanind/tensor-theorem-prover/CI/main)](https://github.com/chanind/tensor-theorem-prover)
+[![Codecov](https://img.shields.io/codecov/c/github/chanind/tensor-theorem-prover/main)](https://codecov.io/gh/chanind/tensor-theorem-prover)
+[![PyPI](https://img.shields.io/pypi/v/tensor-theorem-prover?color=blue)](https://pypi.org/project/tensor-theorem-prover/)
 
-Pure Python first-order logic theorem prover supporting unification with approximate vector similarity
+First-order logic theorem prover supporting unification with approximate vector similarity
 
 ## Installation
 
@@ -171,7 +174,7 @@ prover = ResolutionProver(knowledge=knowledge, max_proof_depth=10)
 
 ## Acknowledgements
 
-This library borrows code and ideas from the earier library [fuzzy-reasoner](https://github.com/fuzzy-reasoner/fuzzy-reasoner). The main difference between these libraries is that tensor-theorem-prover supports full first-order logic using Resolution rather than restricting the logic to Horn clauses and backwards chaining as in fuzzy-reasoner.
+This library borrows code and ideas from the earier library [fuzzy-reasoner](https://github.com/fuzzy-reasoner/fuzzy-reasoner). The main difference between these libraries is that tensor-theorem-prover supports full first-order logic using Resolution, whereas fuzzy-reasoner is restricting to Horn clauses and uses backwards chaining.
 
 Like fuzzy-reasoner, this library also takes inspiration from the following papers for the idea of using vector similarity in theorem proving:
 
@@ -181,5 +184,3 @@ Like fuzzy-reasoner, this library also takes inspiration from the following pape
 ## Contributing
 
 Contributions are welcome! Please leave an issue in the Github repo if you find any bugs, and open a pull request with and fixes or improvements that you'd like to contribute.
-
-## Happy proving!
