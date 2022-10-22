@@ -111,12 +111,12 @@ def test_build_resolvent() -> None:
         source_literal,
         CNFLiteral(pred1(Y, const1), True),
     ]
-    source_disjunction = CNFDisjunction(frozenset(source_literals))
+    source_disjunction = CNFDisjunction(source_literals)
     target_literals = [
         target_literal,
         CNFLiteral(pred2(const2, X), False),
     ]
-    target_disjunction = CNFDisjunction(frozenset(target_literals))
+    target_disjunction = CNFDisjunction(target_literals)
     unification = Unification(
         similarity=1.0,
         source_substitutions={Y: const1},
@@ -134,4 +134,4 @@ def test_build_resolvent() -> None:
         CNFLiteral(pred1(const1, const1), True),
         CNFLiteral(pred2(const2, const2), False),
     ]
-    assert resolvent == CNFDisjunction(frozenset(expected_literals))
+    assert resolvent == CNFDisjunction(expected_literals)

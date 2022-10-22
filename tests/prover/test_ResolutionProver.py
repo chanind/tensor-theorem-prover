@@ -1,5 +1,8 @@
 from __future__ import annotations
+
+import pytest
 from textwrap import dedent
+import numpy as np
 
 from amr_reasoner.prover.ResolutionProver import ResolutionProver
 from amr_reasoner.types import Variable, Predicate, Constant, Implies, And, Not, Clause
@@ -31,7 +34,42 @@ grandma_of_def = Implies(
 )
 
 
-def test_solve_basic_proof() -> None:
+def test_single_step_proof() -> None:
+    knowledge: list[Clause] = [
+        parent_of(homer, bart),
+        parent_of(marge, bart),
+        father_of(abe, homer),
+        mother_of(mona, homer),
+    ]
+
+    prover = ResolutionProver(knowledge=knowledge)
+    goal = father_of(X, homer)
+
+    proof = prover.prove(goal)
+
+    assert proof is not None
+    assert proof.similarity == 1.0
+    assert proof.goal == to_disj([Not(goal)])
+    assert proof.substitutions == {X: abe}
+    assert proof.depth == 1
+
+    EXPECTED_PROOF_STR = """\
+    Goal: [¬father_of(X,homer)]
+    Subsitutions: {X -> abe}
+    Similarity: 1.0
+    Depth: 1
+    Steps:
+      Similarity: 1.0
+      Source: [¬father_of(X,homer)]
+      Target: [father_of(abe,homer)]
+      Unify: father_of(X,homer) = father_of(abe,homer)
+      Subsitutions: {X -> abe}, {}
+      Resolvent: []
+    """
+    assert str(proof) == dedent(EXPECTED_PROOF_STR).strip()
+
+
+def test_solve_basic_multistep_proof() -> None:
     knowledge: list[Clause] = [
         # base facts
         parent_of(homer, bart),
@@ -75,36 +113,7 @@ def test_solve_proof_with_variables() -> None:
     assert proof.similarity == 1.0
     assert proof.goal == to_disj([Not(goal)])
     assert proof.substitutions == {X: abe}
-
-    EXPECTED_PROOF_STR = """\
-    Goal: [¬grandpa_of(X,bart)]
-    Subsitutions: {X -> abe}
-    Similarity: 1.0
-    Depth: 3
-    Steps:
-      Similarity: 1.0
-      Source: [¬grandpa_of(X,bart)]
-      Target: [grandpa_of(X,Y) ∨ ¬father_of(X,Z) ∨ ¬parent_of(Z,Y)]
-      Unify: grandpa_of(X,bart) = grandpa_of(X,Y)
-      Subsitutions: {}, {X -> X, Y -> bart}
-      Resolvent: [¬father_of(X,Z) ∨ ¬parent_of(Z,bart)]
-      ---
-      Similarity: 1.0
-      Source: [¬father_of(X,Z) ∨ ¬parent_of(Z,bart)]
-      Target: [parent_of(homer,bart)]
-      Unify: parent_of(Z,bart) = parent_of(homer,bart)
-      Subsitutions: {Z -> homer}, {}
-      Resolvent: [¬father_of(X,homer)]
-      ---
-      Similarity: 1.0
-      Source: [¬father_of(X,homer)]
-      Target: [father_of(abe,homer)]
-      Unify: father_of(X,homer) = father_of(abe,homer)
-      Subsitutions: {X -> abe}, {}
-      Resolvent: []  
-    """
-
-    assert str(proof) == dedent(EXPECTED_PROOF_STR).strip()
+    assert proof.depth == 3
 
 
 def test_prove_all_doesnt_duplicate_proofs() -> None:
@@ -144,3 +153,35 @@ def test_fails_to_prove_unprovable_goal() -> None:
     goal = grandpa_of(marge, bart)
 
     assert prover.prove(goal) is None
+
+
+def test_prove_all_with_multiple_valid_proof_paths_and_embedding_similarities() -> None:
+    father_of_embed = Predicate("father_of", np.array([0.99, 0.25, 1.17]))
+    dad_of_embed = Predicate("dad_of", np.array([1.0, 0.0, 1.0]))
+
+    grandpa_of_def_embed = Implies(
+        And(father_of_embed(X, Z), father_of_embed(Z, Y)),
+        grandpa_of(X, Y),
+    )
+    knowledge: list[Clause] = [
+        # base facts
+        father_of_embed(homer, bart),
+        dad_of_embed(homer, bart),
+        father_of_embed(abe, homer),
+        dad_of_embed(abe, homer),
+        # theorems
+        grandpa_of_def_embed,
+    ]
+
+    prover = ResolutionProver(knowledge=knowledge)
+
+    goal = grandpa_of(X, bart)
+
+    proofs = prover.prove_all(goal)
+    # should have a separate proof for each combo of dad/father in grandpa_of
+    assert len(proofs) == 4
+    # proofs should be sorted by similarity
+    assert proofs[0].similarity == pytest.approx(1.0)
+    assert proofs[-1].similarity < 0.99
+    for proof in proofs:
+        assert proof.substitutions == {X: abe}

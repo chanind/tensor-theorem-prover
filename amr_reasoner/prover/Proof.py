@@ -18,6 +18,10 @@ class Proof:
     leaf_proof_step: ProofStep
 
     @property
+    def depth(self) -> int:
+        return len(self.proof_steps)
+
+    @property
     def proof_steps(self) -> list[ProofStep]:
         proof_steps: deque[ProofStep] = deque()
         cur_step = self.leaf_proof_step
@@ -48,7 +52,7 @@ class Proof:
         output = f"Goal: {self.goal}\n"
         output += f"Subsitutions: {substitutions_str}\n"
         output += f"Similarity: {self.similarity}\n"
-        output += f"Depth: {len(self.proof_steps)}\n"
+        output += f"Depth: {self.depth}\n"
         output += "Steps:\n"
         output += "\n  ---\n".join(
             indent(str(proof_state), "  ") for proof_state in self.proof_steps

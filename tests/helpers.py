@@ -11,8 +11,8 @@ from amr_reasoner.types import (
 
 
 def to_disj(clause: Iterable[Atom | Not]) -> CNFDisjunction:
-    return CNFDisjunction(frozenset(_element_to_cnf_literal(elm) for elm in clause))
+    return CNFDisjunction([_element_to_cnf_literal(elm) for elm in clause])
 
 
-def to_disj_set(clauses: list[list[Atom | Not]]) -> set[CNFDisjunction]:
-    return set(to_disj(clause) for clause in clauses)
+def to_disj_set(clauses: list[list[Atom | Not]]) -> list[CNFDisjunction]:
+    return [to_disj(clause) for clause in clauses]

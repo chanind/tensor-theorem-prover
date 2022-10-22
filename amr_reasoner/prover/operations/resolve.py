@@ -105,7 +105,7 @@ def _build_resolvent(
         target_literals, unification.target_substitutions
     )
     resolvent_literals = updated_source_literals + updated_target_literals
-    resolvent = CNFDisjunction(frozenset(resolvent_literals))
+    resolvent = CNFDisjunction(resolvent_literals)
     return resolvent
 
 

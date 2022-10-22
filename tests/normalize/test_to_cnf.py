@@ -48,16 +48,6 @@ def test_to_cnf_not_atom() -> None:
     assert to_cnf(clause) == to_disj_set([[Not(pred1(const1))]])
 
 
-def test_to_cnf_does_basic_deduplication_of_disjunctions() -> None:
-    clause = And(pred1(const1), pred1(const1))
-    assert to_cnf(clause) == to_disj_set([[pred1(const1)]])
-
-
-def test_to_cnf_does_basic_deduplication_of_literals() -> None:
-    clause = And(Or(pred1(const1), pred1(const1)), pred2(const1))
-    assert to_cnf(clause) == to_disj_set([[pred1(const1)], [pred2(const1)]])
-
-
 def test_to_cnf_with_nested_functions() -> None:
     clause = And(
         pred1(Y),

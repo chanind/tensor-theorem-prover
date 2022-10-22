@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import pytest
+import numpy as np
+
 from amr_reasoner.prover.operations.unify import unify, Unification
+from amr_reasoner.similarity import cosine_similarity
 from amr_reasoner.types import (
     Constant,
     Function,
@@ -142,3 +146,15 @@ def test_unify_fails_to_bind_reciprocal_functions() -> None:
     source = pred1(func1(X), X)
     target = pred1(Y, func1(Y))
     assert unify(source, target) is None
+
+
+def test_unify_with_vector_embeddings() -> None:
+    vec_prec1 = Predicate("pred1", np.array([1, 0, 1, 1]))
+    vec_prec2 = Predicate("pred2", np.array([1, 0, 0.9, 1]))
+    source = vec_prec1(X)
+    target = vec_prec2(const1)
+    unification = unify(source, target, similarity_func=cosine_similarity)
+    assert unification is not None
+    assert unification.source_substitutions == {X: const1}
+    assert unification.target_substitutions == {}
+    assert unification.similarity > 0.9 and unification.similarity < 1.0

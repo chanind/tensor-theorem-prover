@@ -5,12 +5,12 @@ from amr_reasoner.normalize.to_cnf import CNFDisjunction, to_cnf
 from amr_reasoner.prover.Proof import Proof
 from amr_reasoner.prover.operations.resolve import resolve
 from amr_reasoner.prover.ProofStep import ProofStep
-from amr_reasoner.similarity import SimilarityFunc
+from amr_reasoner.similarity import SimilarityFunc, cosine_similarity
 from amr_reasoner.types import Clause, Not
 
 
 class ResolutionProver:
-    base_knowledge: frozenset[CNFDisjunction]
+    base_knowledge: list[CNFDisjunction]
     max_proof_depth: int
     min_similarity_threshold: float
     # MyPy freaks out if this isn't optional, see https://github.com/python/mypy/issues/708
@@ -20,16 +20,16 @@ class ResolutionProver:
         self,
         knowledge: Iterable[Clause],
         max_proof_depth: int = 10,
-        similarity_func: Optional[SimilarityFunc] = None,
+        similarity_func: Optional[SimilarityFunc] = cosine_similarity,
         min_similarity_threshold: float = 0.5,
     ) -> None:
         self.max_proof_depth = max_proof_depth
         self.similarity_func = similarity_func
         self.min_similarity_threshold = min_similarity_threshold
-        parsed_knowledge = set()
+        parsed_knowledge = []
         for clause in knowledge:
-            parsed_knowledge.update(to_cnf(clause))
-        self.base_knowledge = frozenset(parsed_knowledge)
+            parsed_knowledge += to_cnf(clause)
+        self.base_knowledge = parsed_knowledge
 
     def prove(self, goal: Clause) -> Optional[Proof]:
         """Find the best proof for the given goal"""
@@ -42,7 +42,7 @@ class ResolutionProver:
         """Find all possible proofs for the given goal, sorted by similarity score"""
         inverted_goals = to_cnf(Not(goal))
         proofs = []
-        knowledge = self.base_knowledge | inverted_goals
+        knowledge = self.base_knowledge + inverted_goals
         for inverted_goal in inverted_goals:
             leaf_proof_steps = self._prove_all_recursive(inverted_goal, knowledge)
             for leaf_proof_step in leaf_proof_steps:
@@ -59,7 +59,7 @@ class ResolutionProver:
     def _prove_all_recursive(
         self,
         goal: CNFDisjunction,
-        knowledge: frozenset[CNFDisjunction],
+        knowledge: Iterable[CNFDisjunction],
         depth: int = 0,
         parent_state: Optional[ProofStep] = None,
     ) -> list[ProofStep]:
