@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Dict, Union, Optional
+from typing import Dict, Optional
 
 from amr_reasoner.types import Variable, Term
 from amr_reasoner.normalize import CNFDisjunction
