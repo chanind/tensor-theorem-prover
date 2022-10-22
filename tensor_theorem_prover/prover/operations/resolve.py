@@ -6,7 +6,6 @@ from tensor_theorem_prover.normalize.to_cnf import CNFDisjunction, CNFLiteral
 from tensor_theorem_prover.prover.ProofStep import ProofStep, SubstitutionsMap
 from tensor_theorem_prover.similarity import SimilarityFunc
 from tensor_theorem_prover.types import Atom, Term, Variable
-from tensor_theorem_prover.util.pick_from_set import pick_from_set
 
 from .unify import Unification, unify
 
@@ -29,7 +28,7 @@ def resolve(
         A list of proof states corresponding to each possible resolution.
     """
     next_steps = []
-    source_literal = pick_from_set(source.literals)
+    source_literal = source.literals[0]
     for target_literal in target.literals:
         # we can only resolve literals with the opposite polarity
         if source_literal.polarity == target_literal.polarity:

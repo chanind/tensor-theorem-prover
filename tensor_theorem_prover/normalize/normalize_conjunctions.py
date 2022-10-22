@@ -31,6 +31,4 @@ def normalize_conjunctions(clause: SimplifiedClause) -> SimplifiedClause:
     if isinstance(clause, And):
         simp_terms = map(assert_simplified, clause.args)
         return And(*map(normalize_conjunctions, simp_terms))
-    if isinstance(clause, Atom):
-        return clause
     raise ValueError(f"Unexpected clause type: {type(clause)}")

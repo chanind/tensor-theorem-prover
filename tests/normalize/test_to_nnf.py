@@ -31,6 +31,11 @@ def test_to_nnf_simplifies_implies_clause() -> None:
     assert str(to_nnf(clause)) == "¬pred1(X) ∨ pred2(X)"
 
 
+def test_to_nnf_simplifies_not_implies_clause() -> None:
+    clause = Not(Implies(pred1(X), pred2(X)))
+    assert str(to_nnf(clause)) == "pred1(X) ∧ ¬pred2(X)"
+
+
 def test_to_nnf_simplifies_not_all_clause() -> None:
     clause = Not(All(X, pred1(X)))
     assert str(to_nnf(clause)) == "∃X(¬pred1(X))"
@@ -39,6 +44,11 @@ def test_to_nnf_simplifies_not_all_clause() -> None:
 def test_to_nnf_simplifies_not_exists_clause() -> None:
     clause = Not(Exists(X, pred1(X)))
     assert str(to_nnf(clause)) == "∀X(¬pred1(X))"
+
+
+def test_to_nnf_leave_for_all_clause_alone() -> None:
+    clause = All(X, pred1(X))
+    assert str(to_nnf(clause)) == "∀X(pred1(X))"
 
 
 def test_to_nnf_simplifies_not_or_clause() -> None:

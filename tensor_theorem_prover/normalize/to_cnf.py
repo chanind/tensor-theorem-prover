@@ -51,10 +51,6 @@ def _norm_clause_to_cnf(clause: SimplifiedClause) -> list[CNFDisjunction]:
     if isinstance(clause, Atom) or isinstance(clause, Not):
         literal = _element_to_cnf_literal(clause)
         return [CNFDisjunction([literal])]
-    if isinstance(clause, Not):
-        # this should already be basically in CNF, so there can only be atoms inside of a Not
-        assert isinstance(clause.body, Atom)
-        return [CNFDisjunction([CNFLiteral(clause.body, False)])]
     if isinstance(clause, And):
         disjunctions = []
         for term in clause.args:
