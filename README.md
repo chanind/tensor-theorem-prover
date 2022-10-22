@@ -1,6 +1,6 @@
 # Tensor Theorem Prover
 
-Pure Python first-order logic theorem prover supporting unification with approximate vector similarity.
+Pure Python first-order logic theorem prover supporting unification with approximate vector similarity
 
 ## Installation
 
