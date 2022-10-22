@@ -9,7 +9,7 @@ from amr_reasoner.prover.operations.resolve import (
     _build_resolvent,
 )
 from amr_reasoner.prover.operations.unify import Unification
-from amr_reasoner.prover.ProofState import SubstitutionsMap
+from amr_reasoner.prover.ProofStep import SubstitutionsMap
 from amr_reasoner.types import (
     Constant,
     Predicate,

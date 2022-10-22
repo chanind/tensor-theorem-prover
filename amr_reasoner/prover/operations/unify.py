@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Iterable, Optional, Tuple
 from typing_extensions import Literal
 
-from amr_reasoner.prover.ProofState import SubstitutionsMap
+from amr_reasoner.prover.ProofStep import SubstitutionsMap
 from amr_reasoner.similarity import SimilarityFunc, symbol_compare
 from amr_reasoner.types import Atom, Constant, Variable, BoundFunction, Term
 

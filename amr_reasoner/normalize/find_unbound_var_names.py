@@ -4,7 +4,7 @@ from typing import Iterable
 from amr_reasoner.types import (
     Atom,
     Clause,
-    Constant,
+    Term,
     Variable,
     And,
     Or,
@@ -44,7 +44,7 @@ def find_unbound_var_names(clause: Clause, bound_vars: set[str] = set()) -> set[
 
 
 def _find_unbound_var_names_in_terms(
-    terms: Iterable[Constant | Variable | BoundFunction], bound_vars: set[str]
+    terms: Iterable[Term], bound_vars: set[str]
 ) -> set[str]:
     unbound_vars: set[str] = set()
     for term in terms:

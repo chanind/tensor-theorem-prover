@@ -1,11 +1,12 @@
 from __future__ import annotations
 import re
 from typing import Optional
-from amr_reasoner.normalize.to_cnf import CNFDisjunction, CNFLiteral
 
-from amr_reasoner.prover.ProofState import ProofState, SubstitutionsMap
+from amr_reasoner.normalize.to_cnf import CNFDisjunction, CNFLiteral
+from amr_reasoner.prover.ProofStep import ProofStep, SubstitutionsMap
 from amr_reasoner.similarity import SimilarityFunc
 from amr_reasoner.types import Atom, Term, Variable
+from amr_reasoner.util.pick_from_set import pick_from_set
 
 from .unify import Unification, unify
 
@@ -15,8 +16,8 @@ def resolve(
     target: CNFDisjunction,
     min_similarity_threshold: float = 0.5,
     similarity_func: Optional[SimilarityFunc] = None,
-    parent: Optional[ProofState] = None,
-) -> list[ProofState]:
+    parent: Optional[ProofStep] = None,
+) -> list[ProofStep]:
     """Resolve a source and target CNF disjunction
 
     Args:
@@ -27,36 +28,35 @@ def resolve(
     Returns:
         A list of proof states corresponding to each possible resolution.
     """
-    states = []
-    for source_literal in source.literals:
-        for target_literal in target.literals:
-            # we can only resolve literals with the opposite polarity
-            if source_literal.polarity == target_literal.polarity:
-                continue
-            unification = unify(
-                source_literal.atom,
-                target_literal.atom,
-                min_similarity_threshold,
-                similarity_func,
+    next_steps = []
+    source_literal = pick_from_set(source.literals)
+    for target_literal in target.literals:
+        # we can only resolve literals with the opposite polarity
+        if source_literal.polarity == target_literal.polarity:
+            continue
+        unification = unify(
+            source_literal.atom,
+            target_literal.atom,
+            min_similarity_threshold,
+            similarity_func,
+        )
+        if unification:
+            resolvent = _build_resolvent(
+                source, target, source_literal, target_literal, unification
             )
-            if unification:
-                print(source)
-                resolvent = _build_resolvent(
-                    source, target, source_literal, target_literal, unification
-                )
-                new_state = ProofState(
-                    source=source,
-                    target=target,
-                    resolvent=resolvent,
-                    source_unification_literal=source_literal,
-                    target_unification_literal=target_literal,
-                    source_substitutions=unification.source_substitutions,
-                    target_substitutions=unification.target_substitutions,
-                    similarity=unification.similarity,
-                    parent=parent,
-                )
-                states.append(new_state)
-    return states
+            step = ProofStep(
+                source=source,
+                target=target,
+                resolvent=resolvent,
+                source_unification_literal=source_literal,
+                target_unification_literal=target_literal,
+                source_substitutions=unification.source_substitutions,
+                target_substitutions=unification.target_substitutions,
+                similarity=unification.similarity,
+                parent=parent,
+            )
+            next_steps.append(step)
+    return next_steps
 
 
 def _build_resolvent(

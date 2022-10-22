@@ -4,7 +4,7 @@ from typing import Iterable, Optional
 from amr_reasoner.normalize.to_cnf import CNFDisjunction, to_cnf
 from amr_reasoner.prover.Proof import Proof
 from amr_reasoner.prover.operations.resolve import resolve
-from amr_reasoner.prover.ProofState import ProofState
+from amr_reasoner.prover.ProofStep import ProofStep
 from amr_reasoner.similarity import SimilarityFunc
 from amr_reasoner.types import Clause, Not
 
@@ -44,17 +44,15 @@ class ResolutionProver:
         proofs = []
         knowledge = self.base_knowledge | inverted_goals
         for inverted_goal in inverted_goals:
-            successful_proof_states = self._prove_all_recursive(
-                inverted_goal, knowledge
-            )
-            for proof_state in successful_proof_states:
+            leaf_proof_steps = self._prove_all_recursive(inverted_goal, knowledge)
+            for leaf_proof_step in leaf_proof_steps:
                 # TODO: Make combining similarities customizable rather than always taking the minimum
-                similarity = proof_state.similarity
-                cur_state = proof_state
+                similarity = leaf_proof_step.similarity
+                cur_state = leaf_proof_step
                 while cur_state.parent:
                     similarity = min(similarity, cur_state.parent.similarity)
                     cur_state = cur_state.parent
-                proofs.append(Proof(inverted_goal, similarity, proof_state))
+                proofs.append(Proof(inverted_goal, similarity, leaf_proof_step))
 
         return sorted(proofs, key=lambda proof: proof.similarity, reverse=True)
 
@@ -63,11 +61,11 @@ class ResolutionProver:
         goal: CNFDisjunction,
         knowledge: frozenset[CNFDisjunction],
         depth: int = 0,
-        parent_state: Optional[ProofState] = None,
-    ) -> list[ProofState]:
+        parent_state: Optional[ProofStep] = None,
+    ) -> list[ProofStep]:
         if parent_state and depth >= self.max_proof_depth:
             return []
-        successful_proof_states = []
+        successful_proof_leaf_steps = []
         for clause in knowledge:
             next_states = resolve(
                 goal,
@@ -80,10 +78,10 @@ class ResolutionProver:
                 if next_state.resolvent is None:
                     raise ValueError("Resolvent was unexpectedly not present")
                 if len(next_state.resolvent.literals) == 0:
-                    successful_proof_states.append(next_state)
+                    successful_proof_leaf_steps.append(next_state)
                 else:
-                    successful_proof_states += self._prove_all_recursive(
+                    successful_proof_leaf_steps += self._prove_all_recursive(
                         next_state.resolvent, knowledge, depth + 1, next_state
                     )
 
-        return successful_proof_states
+        return successful_proof_leaf_steps

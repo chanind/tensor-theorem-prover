@@ -15,7 +15,7 @@ def subsitutions_to_str(substitutions: SubstitutionsMap) -> str:
 
 
 @dataclass
-class ProofState:
+class ProofStep:
     source: CNFDisjunction
     target: CNFDisjunction
     source_unification_literal: CNFLiteral
@@ -24,7 +24,7 @@ class ProofState:
     target_substitutions: SubstitutionsMap
     resolvent: CNFDisjunction
     similarity: float
-    parent: Optional[ProofState] = None
+    parent: Optional[ProofStep] = None
 
     def __str__(self) -> str:
         output = f"Similarity: {self.similarity}\n"
