@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
 
-from amr_reasoner.similarity import cosine_similarity, symbol_compare
-from amr_reasoner.types.Constant import Constant
+from tensor_theorem_prover.similarity import cosine_similarity, symbol_compare
+from tensor_theorem_prover.types.Constant import Constant
 
 
 def test_cosine_similarity_uses_the_provided_similarity_metric() -> None:

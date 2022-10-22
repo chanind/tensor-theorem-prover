@@ -1,5 +1,5 @@
-from amr_reasoner.normalize.to_nnf import to_nnf
-from amr_reasoner.types import (
+from tensor_theorem_prover.normalize.to_nnf import to_nnf
+from tensor_theorem_prover.types import (
     And,
     Constant,
     Predicate,

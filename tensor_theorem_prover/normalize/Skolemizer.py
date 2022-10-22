@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from amr_reasoner.types import Term, BoundFunction, Function
+from tensor_theorem_prover.types import Term, BoundFunction, Function
 
 
 class Skolemizer:

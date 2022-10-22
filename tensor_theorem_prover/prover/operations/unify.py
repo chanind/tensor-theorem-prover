@@ -3,9 +3,9 @@ from dataclasses import dataclass, field
 from typing import Dict, Iterable, Optional, Tuple
 from typing_extensions import Literal
 
-from amr_reasoner.prover.ProofStep import SubstitutionsMap
-from amr_reasoner.similarity import SimilarityFunc, symbol_compare
-from amr_reasoner.types import Atom, Constant, Variable, BoundFunction, Term
+from tensor_theorem_prover.prover.ProofStep import SubstitutionsMap
+from tensor_theorem_prover.similarity import SimilarityFunc, symbol_compare
+from tensor_theorem_prover.types import Atom, Constant, Variable, BoundFunction, Term
 
 
 @dataclass

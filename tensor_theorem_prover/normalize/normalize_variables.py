@@ -1,8 +1,10 @@
 from __future__ import annotations
 from typing import Iterable
-from amr_reasoner.normalize.find_unbound_var_names import find_unbound_var_names
+from tensor_theorem_prover.normalize.find_unbound_var_names import (
+    find_unbound_var_names,
+)
 
-from amr_reasoner.types import (
+from tensor_theorem_prover.types import (
     Variable,
     And,
     Or,

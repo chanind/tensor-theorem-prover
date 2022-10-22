@@ -3,8 +3,8 @@ from typing import Callable, Union
 import numpy as np
 from numpy.linalg import norm
 
-from amr_reasoner.types.Constant import Constant
-from amr_reasoner.types.Predicate import Predicate
+from tensor_theorem_prover.types.Constant import Constant
+from tensor_theorem_prover.types.Predicate import Predicate
 
 
 SimilarityFunc = Callable[
@@ -14,7 +14,7 @@ SimilarityFunc = Callable[
 
 def symbol_compare(item1: Constant | Predicate, item2: Constant | Predicate) -> float:
     """
-    directly compares the symbol strings of the two items, doesn't do any amr matching
+    directly compares the symbol strings of the two items, doesn't do any fuzzy matching
     """
     return 1.0 if item1.symbol == item2.symbol else 0.0
 

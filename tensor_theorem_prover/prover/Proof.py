@@ -4,10 +4,10 @@ from collections import deque
 from dataclasses import dataclass
 from textwrap import indent
 
-from amr_reasoner.normalize.to_cnf import CNFDisjunction
-from amr_reasoner.types import Constant, Variable, Term
-from amr_reasoner.types.Function import BoundFunction
-from amr_reasoner.util.find_variables_in_terms import find_variables_in_terms
+from tensor_theorem_prover.normalize.to_cnf import CNFDisjunction
+from tensor_theorem_prover.types import Constant, Variable, Term
+from tensor_theorem_prover.types.Function import BoundFunction
+from tensor_theorem_prover.util.find_variables_in_terms import find_variables_in_terms
 from .ProofStep import ProofStep, SubstitutionsMap
 
 

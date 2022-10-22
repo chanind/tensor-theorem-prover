@@ -1,10 +1,10 @@
 from __future__ import annotations
 from typing import Iterable
-from amr_reasoner.normalize.to_cnf import (
+from tensor_theorem_prover.normalize.to_cnf import (
     CNFDisjunction,
     _element_to_cnf_literal,
 )
-from amr_reasoner.types import (
+from tensor_theorem_prover.types import (
     Not,
     Atom,
 )

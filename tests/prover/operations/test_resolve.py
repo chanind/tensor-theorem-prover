@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from amr_reasoner.normalize.to_cnf import CNFDisjunction, CNFLiteral
-from amr_reasoner.prover.operations.resolve import (
+from tensor_theorem_prover.normalize.to_cnf import CNFDisjunction, CNFLiteral
+from tensor_theorem_prover.prover.operations.resolve import (
     _find_unused_variables,
     _find_non_overlapping_var_names,
     _rename_variables_in_literals,
     _perform_substitution,
     _build_resolvent,
 )
-from amr_reasoner.prover.operations.unify import Unification
-from amr_reasoner.prover.ProofStep import SubstitutionsMap
-from amr_reasoner.types import (
+from tensor_theorem_prover.prover.operations.unify import Unification
+from tensor_theorem_prover.prover.ProofStep import SubstitutionsMap
+from tensor_theorem_prover.types import (
     Constant,
     Predicate,
     Variable,

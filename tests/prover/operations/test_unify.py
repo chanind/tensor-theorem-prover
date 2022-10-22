@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from amr_reasoner.prover.operations.unify import unify, Unification
-from amr_reasoner.similarity import cosine_similarity
-from amr_reasoner.types import (
+from tensor_theorem_prover.prover.operations.unify import unify, Unification
+from tensor_theorem_prover.similarity import cosine_similarity
+from tensor_theorem_prover.types import (
     Constant,
     Function,
     Predicate,

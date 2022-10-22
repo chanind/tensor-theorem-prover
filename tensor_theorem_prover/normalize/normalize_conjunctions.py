@@ -1,11 +1,11 @@
 from __future__ import annotations
 import itertools
-from amr_reasoner.normalize.normalize_quantifiers import (
+from tensor_theorem_prover.normalize.normalize_quantifiers import (
     SimplifiedClause,
     assert_simplified,
 )
 
-from amr_reasoner.types import (
+from tensor_theorem_prover.types import (
     And,
     Or,
     Not,

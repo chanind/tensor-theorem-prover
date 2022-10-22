@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from amr_reasoner.normalize.Skolemizer import Skolemizer
-from amr_reasoner.types import Clause, Atom, Not, And, Or
+from tensor_theorem_prover.normalize.Skolemizer import Skolemizer
+from tensor_theorem_prover.types import Clause, Atom, Not, And, Or
 
 from .to_nnf import to_nnf
 from .normalize_variables import normalize_variables

@@ -2,8 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Union
 
-from amr_reasoner.types.Atom import Atom
-from amr_reasoner.types.Variable import Variable
+from tensor_theorem_prover.types.Atom import Atom
+from tensor_theorem_prover.types.Variable import Variable
 
 
 @dataclass

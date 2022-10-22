@@ -1,5 +1,5 @@
-from amr_reasoner.normalize.normalize_variables import normalize_variables
-from amr_reasoner.types import (
+from tensor_theorem_prover.normalize.normalize_variables import normalize_variables
+from tensor_theorem_prover.types import (
     And,
     Constant,
     Predicate,

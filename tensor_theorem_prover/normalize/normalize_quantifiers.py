@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from typing import Iterable, Union
 
-from amr_reasoner.normalize.Skolemizer import Skolemizer
-from amr_reasoner.normalize.find_unbound_var_names import find_unbound_var_names
-from amr_reasoner.normalize.to_nnf import NNFClause, assert_nnf
-from amr_reasoner.types import (
+from tensor_theorem_prover.normalize.Skolemizer import Skolemizer
+from tensor_theorem_prover.normalize.find_unbound_var_names import (
+    find_unbound_var_names,
+)
+from tensor_theorem_prover.normalize.to_nnf import NNFClause, assert_nnf
+from tensor_theorem_prover.types import (
     Variable,
     And,
     Or,

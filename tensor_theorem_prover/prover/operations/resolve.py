@@ -2,11 +2,11 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-from amr_reasoner.normalize.to_cnf import CNFDisjunction, CNFLiteral
-from amr_reasoner.prover.ProofStep import ProofStep, SubstitutionsMap
-from amr_reasoner.similarity import SimilarityFunc
-from amr_reasoner.types import Atom, Term, Variable
-from amr_reasoner.util.pick_from_set import pick_from_set
+from tensor_theorem_prover.normalize.to_cnf import CNFDisjunction, CNFLiteral
+from tensor_theorem_prover.prover.ProofStep import ProofStep, SubstitutionsMap
+from tensor_theorem_prover.similarity import SimilarityFunc
+from tensor_theorem_prover.types import Atom, Term, Variable
+from tensor_theorem_prover.util.pick_from_set import pick_from_set
 
 from .unify import Unification, unify
 

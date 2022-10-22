@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "amr-reasoner"
+name = "tensor-theorem-prover"
 version = "0.1.0"
-description = "Symbolic reasoner for working with logic derived from Abstract Meaning Representation (AMR)"
+description = "Customizable first-order logic theorem prover supporting approximate vector similarity in unification"
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/chanind/amr-reasoner"
+repository = "https://github.com/chanind/tensor-theorem-prover"
 authors = ["David Chanin <chanindav@gmail.com>"]
 
 [tool.poetry.dependencies]
@@ -25,7 +25,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.semantic_release]
 version_variable = [
-    "amr_reasoner/__init__.py:__version__",
+    "tensor_theorem_prover/__init__.py:__version__",
     "pyproject.toml:version"
 ]
 branch = "main"

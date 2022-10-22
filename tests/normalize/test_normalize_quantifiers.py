@@ -1,6 +1,6 @@
-from amr_reasoner.normalize.Skolemizer import Skolemizer
-from amr_reasoner.normalize.normalize_quantifiers import normalize_quantifiers
-from amr_reasoner.types import (
+from tensor_theorem_prover.normalize.Skolemizer import Skolemizer
+from tensor_theorem_prover.normalize.normalize_quantifiers import normalize_quantifiers
+from tensor_theorem_prover.types import (
     And,
     Constant,
     Predicate,

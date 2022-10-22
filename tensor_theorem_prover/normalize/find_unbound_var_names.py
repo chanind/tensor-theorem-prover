@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Iterable
 
-from amr_reasoner.types import (
+from tensor_theorem_prover.types import (
     Atom,
     Clause,
     Term,

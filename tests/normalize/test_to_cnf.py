@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from amr_reasoner.normalize import Skolemizer, to_cnf
-from amr_reasoner.types import (
+from tensor_theorem_prover.normalize import Skolemizer, to_cnf
+from tensor_theorem_prover.types import (
     And,
     Constant,
     Predicate,

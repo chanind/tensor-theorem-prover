@@ -2,8 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from amr_reasoner.types import Variable, Term
-from amr_reasoner.normalize import CNFDisjunction, CNFLiteral
+from tensor_theorem_prover.types import Variable, Term
+from tensor_theorem_prover.normalize import CNFDisjunction, CNFLiteral
 
 
 SubstitutionsMap = Dict[Variable, Term]

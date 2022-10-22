@@ -1,6 +1,14 @@
 from typing import Union
-from amr_reasoner.types.Atom import Atom
-from amr_reasoner.types.connectives import All, And, Clause, Exists, Implies, Not, Or
+from tensor_theorem_prover.types.Atom import Atom
+from tensor_theorem_prover.types.connectives import (
+    All,
+    And,
+    Clause,
+    Exists,
+    Implies,
+    Not,
+    Or,
+)
 
 
 NNFClause = Union[Atom, Not, And, Or, All, Exists]

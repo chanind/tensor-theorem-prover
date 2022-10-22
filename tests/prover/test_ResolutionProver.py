@@ -4,8 +4,16 @@ import pytest
 from textwrap import dedent
 import numpy as np
 
-from amr_reasoner.prover.ResolutionProver import ResolutionProver
-from amr_reasoner.types import Variable, Predicate, Constant, Implies, And, Not, Clause
+from tensor_theorem_prover.prover.ResolutionProver import ResolutionProver
+from tensor_theorem_prover.types import (
+    Variable,
+    Predicate,
+    Constant,
+    Implies,
+    And,
+    Not,
+    Clause,
+)
 from tests.helpers import to_disj
 
 

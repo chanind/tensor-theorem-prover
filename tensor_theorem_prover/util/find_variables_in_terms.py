@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Iterable
-from amr_reasoner.types import Term, Variable, BoundFunction
+from tensor_theorem_prover.types import Term, Variable, BoundFunction
 
 
 def find_variables_in_terms(terms: Iterable[Term]) -> set[Variable]:

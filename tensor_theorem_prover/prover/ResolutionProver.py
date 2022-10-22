@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import Iterable, Optional
 
-from amr_reasoner.normalize import Skolemizer, CNFDisjunction, to_cnf
-from amr_reasoner.prover.Proof import Proof
-from amr_reasoner.prover.operations.resolve import resolve
-from amr_reasoner.prover.ProofStep import ProofStep
-from amr_reasoner.similarity import SimilarityFunc, cosine_similarity
-from amr_reasoner.types import Clause, Not
+from tensor_theorem_prover.normalize import Skolemizer, CNFDisjunction, to_cnf
+from tensor_theorem_prover.prover.Proof import Proof
+from tensor_theorem_prover.prover.operations.resolve import resolve
+from tensor_theorem_prover.prover.ProofStep import ProofStep
+from tensor_theorem_prover.similarity import SimilarityFunc, cosine_similarity
+from tensor_theorem_prover.types import Clause, Not
 
 
 class ResolutionProver:

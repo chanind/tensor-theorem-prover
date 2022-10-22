@@ -1,5 +1,7 @@
-from amr_reasoner.normalize.normalize_conjunctions import normalize_conjunctions
-from amr_reasoner.types import (
+from tensor_theorem_prover.normalize.normalize_conjunctions import (
+    normalize_conjunctions,
+)
+from tensor_theorem_prover.types import (
     And,
     Constant,
     Predicate,
