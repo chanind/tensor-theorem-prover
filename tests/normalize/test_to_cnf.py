@@ -64,11 +64,11 @@ def test_to_cnf_with_nested_functions() -> None:
         Exists(X, Or(pred2(func1(func1(X)), Y), pred1(const1, func2(Y, func1(X))))),
     )
     assert set(map(str, to_cnf(clause))) == {
-        "[pred1(Y_1)]",
-        "[pred1(const1,func2(Y_1,func1(_SK_1(Y_1)))) ∨ pred2(func1(func1(_SK_1(Y_1))),Y_1)]",
+        "[pred1(Y)]",
+        "[pred1(const1,func2(Y,func1(_SK_1(Y)))) ∨ pred2(func1(func1(_SK_1(Y))),Y)]",
     }
 
 
 def test_to_cnf_with_implies_clause() -> None:
     clause = Implies(pred1(X), pred2(X))
-    assert set(map(str, to_cnf(clause))) == {"[pred2(X_1) ∨ ¬pred1(X_1)]"}
+    assert set(map(str, to_cnf(clause))) == {"[pred2(X) ∨ ¬pred1(X)]"}

@@ -17,18 +17,26 @@ from .to_nnf import NNFClause, assert_nnf
 
 
 class VarNameGenerator:
+    used_names: set[str]
+
     def __init__(self) -> None:
-        self.index = 0
+        self.used_names = set()
 
     def __call__(self, name: str) -> str:
-        self.index += 1
-        return f"{name}_{self.index}"
+        index = 0
+        cur_name = name
+        while True:
+            if cur_name not in self.used_names:
+                self.used_names.add(cur_name)
+                return cur_name
+            index += 1
+            cur_name = f"{name}_{index}"
 
 
 def normalize_variables(clause: NNFClause) -> NNFClause:
     """Ensure that every variable has a unique name."""
-    name_generator = VarNameGenerator()
     unbound_var_names = sorted(find_unbound_var_names(clause))
+    name_generator = VarNameGenerator()
     remap_var_names = {name: name_generator(name) for name in unbound_var_names}
     return _normalize_variables_recursive(clause, name_generator, remap_var_names)
 
