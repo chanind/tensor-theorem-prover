@@ -171,7 +171,7 @@ prover = ResolutionProver(knowledge=knowledge, max_proof_depth=10)
 
 ## Acknowledgements
 
-This library borrows code and ideas from the earier library [fuzzy-reasoner](https://github.com/fuzzy-reasoner/fuzzy-reasoner), except supporting full first-order logic using Resolution rather than Horn clauses and backwards chaining as in fuzzy-reasoner.
+This library borrows code and ideas from the earier library [fuzzy-reasoner](https://github.com/fuzzy-reasoner/fuzzy-reasoner). The main difference between these libraries is that tensor-theorem-prover supports full first-order logic using Resolution rather than restricting the logic to Horn clauses and backwards chaining as in fuzzy-reasoner.
 
 Like fuzzy-reasoner, this library also takes inspiration from the following papers for the idea of using vector similarity in theorem proving:
 
