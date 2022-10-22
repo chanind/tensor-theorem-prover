@@ -6,10 +6,11 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/chanind/tensor-theorem-prover"
 authors = ["David Chanin <chanindav@gmail.com>"]
+keywords = ["theorem-proving", "logic", "first-order", "unification", "reasoning"]
 
 [tool.poetry.dependencies]
 python = ">=3.7, <4.0"
-numpy = "^1.21.1"
+numpy = "^1.20.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.3"
