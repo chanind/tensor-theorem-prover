@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from amr_reasoner.normalize.Skolemizer import Skolemizer
 from amr_reasoner.types import Clause, Atom, Not, And, Or
 
 from .to_nnf import to_nnf
@@ -31,8 +32,7 @@ class CNFDisjunction:
         return f"[{inner_disjunction}]"
 
 
-# TODO: dedupe literals/disjunctions based on embedding vectors, if present
-def to_cnf(clause: Clause) -> list[CNFDisjunction]:
+def to_cnf(clause: Clause, skolemizer: Skolemizer) -> list[CNFDisjunction]:
     """Convert a clause to conjunctive normal form (CNF).
     Args:
         clauses: The clause to convert.
@@ -42,7 +42,7 @@ def to_cnf(clause: Clause) -> list[CNFDisjunction]:
 
     nnf_clause = to_nnf(clause)
     nnf_clause = normalize_variables(nnf_clause)
-    simplified_clause = normalize_quantifiers(nnf_clause)
+    simplified_clause = normalize_quantifiers(nnf_clause, skolemizer)
     normalized_clause = normalize_conjunctions(simplified_clause)
     return _norm_clause_to_cnf(normalized_clause)
 

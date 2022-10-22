@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 import numpy as np
 
 from amr_reasoner.prover.operations.unify import unify, Unification
@@ -148,13 +147,41 @@ def test_unify_fails_to_bind_reciprocal_functions() -> None:
     assert unify(source, target) is None
 
 
-def test_unify_with_vector_embeddings() -> None:
-    vec_prec1 = Predicate("pred1", np.array([1, 0, 1, 1]))
-    vec_prec2 = Predicate("pred2", np.array([1, 0, 0.9, 1]))
-    source = vec_prec1(X)
-    target = vec_prec2(const1)
+def test_unify_with_predicate_vector_embeddings() -> None:
+    vec_pred1 = Predicate("pred1", np.array([1, 0, 1, 1]))
+    vec_pred2 = Predicate("pred2", np.array([1, 0, 0.9, 1]))
+    source = vec_pred1(X)
+    target = vec_pred2(const1)
     unification = unify(source, target, similarity_func=cosine_similarity)
     assert unification is not None
     assert unification.source_substitutions == {X: const1}
     assert unification.target_substitutions == {}
     assert unification.similarity > 0.9 and unification.similarity < 1.0
+
+
+def test_unify_fails_with_dissimilar_predicate_vector_embeddings() -> None:
+    vec_pred1 = Predicate("pred1", np.array([0, 1, 1, 0]))
+    vec_pred2 = Predicate("pred2", np.array([1, 0, 0.3, 1]))
+    source = vec_pred1(X)
+    target = vec_pred2(const1)
+    assert unify(source, target, similarity_func=cosine_similarity) is None
+
+
+def test_unify_with_constant_vector_embeddings() -> None:
+    vec_const1 = Constant("const1", np.array([1, 0, 1, 1]))
+    vec_const2 = Constant("const2", np.array([1, 0, 0.9, 1]))
+    source = pred1(vec_const1)
+    target = pred1(vec_const2)
+    unification = unify(source, target, similarity_func=cosine_similarity)
+    assert unification is not None
+    assert unification.source_substitutions == {}
+    assert unification.target_substitutions == {}
+    assert unification.similarity > 0.9 and unification.similarity < 1.0
+
+
+def test_unify_fails_with_dissimilar_constant_vector_embeddings() -> None:
+    vec_const1 = Constant("const1", np.array([0, 1, 1, 0]))
+    vec_const2 = Constant("const2", np.array([1, 0, 0.3, 1]))
+    source = pred1(vec_const1)
+    target = pred1(vec_const2)
+    assert unify(source, target, similarity_func=cosine_similarity) is None

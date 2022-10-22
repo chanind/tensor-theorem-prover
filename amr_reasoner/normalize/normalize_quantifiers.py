@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 from typing import Iterable, Union
+
+from amr_reasoner.normalize.Skolemizer import Skolemizer
 from amr_reasoner.normalize.find_unbound_var_names import find_unbound_var_names
 from amr_reasoner.normalize.to_nnf import NNFClause, assert_nnf
-
 from amr_reasoner.types import (
-    Function,
     Variable,
     And,
     Or,
@@ -26,33 +27,25 @@ def assert_simplified(clause: Clause) -> SimplifiedClause:
     return clause
 
 
-class SkolemNameGenerator:
-    def __init__(self) -> None:
-        self.index = 0
-
-    def __call__(self) -> str:
-        self.index += 1
-        return f"_SK_{self.index}"
-
-
-def normalize_quantifiers(clause: NNFClause) -> SimplifiedClause:
+def normalize_quantifiers(
+    clause: NNFClause, skolemizer: Skolemizer
+) -> SimplifiedClause:
     """Skolemize 'exists' quantifiers and remove 'for all' quantifiers"""
-    name_generator = SkolemNameGenerator()
     universal_var_names = find_unbound_var_names(clause)
     skolem_map: dict[str, BoundFunction] = {}
     return _normalize_quantifiers_recursive(
-        clause, name_generator, universal_var_names, skolem_map
+        clause, skolemizer, universal_var_names, skolem_map
     )
 
 
 def _normalize_quantifiers_recursive(
     clause: NNFClause,
-    name_generator: SkolemNameGenerator,
+    skolemizer: Skolemizer,
     universal_var_names: set[str],
     skolem_map: dict[str, BoundFunction],
 ) -> SimplifiedClause:
     normalize_term = lambda term: _normalize_quantifiers_recursive(
-        assert_nnf(term), name_generator, universal_var_names, skolem_map
+        assert_nnf(term), skolemizer, universal_var_names, skolem_map
     )
     if isinstance(clause, And):
         return And(*map(normalize_term, clause.args))
@@ -64,21 +57,20 @@ def _normalize_quantifiers_recursive(
         next_universal_var_names = universal_var_names | {clause.variable.name}
         return _normalize_quantifiers_recursive(
             assert_nnf(clause.body),
-            name_generator,
+            skolemizer,
             next_universal_var_names,
             skolem_map,
         )
     if isinstance(clause, Exists):
-        skolem_func = Function(name_generator())
         next_skolem_map = {
             **skolem_map,
-            clause.variable.name: skolem_func(
+            clause.variable.name: skolemizer(
                 *map(Variable, sorted(universal_var_names))
             ),
         }
         return _normalize_quantifiers_recursive(
             assert_nnf(clause.body),
-            name_generator,
+            skolemizer,
             universal_var_names,
             next_skolem_map,
         )

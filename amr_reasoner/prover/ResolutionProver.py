@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 from typing import Iterable, Optional
 
-from amr_reasoner.normalize.to_cnf import CNFDisjunction, to_cnf
+from amr_reasoner.normalize import Skolemizer, CNFDisjunction, to_cnf
 from amr_reasoner.prover.Proof import Proof
 from amr_reasoner.prover.operations.resolve import resolve
 from amr_reasoner.prover.ProofStep import ProofStep
@@ -15,6 +16,7 @@ class ResolutionProver:
     min_similarity_threshold: float
     # MyPy freaks out if this isn't optional, see https://github.com/python/mypy/issues/708
     similarity_func: Optional[SimilarityFunc]
+    skolemizer: Skolemizer
 
     def __init__(
         self,
@@ -26,9 +28,10 @@ class ResolutionProver:
         self.max_proof_depth = max_proof_depth
         self.similarity_func = similarity_func
         self.min_similarity_threshold = min_similarity_threshold
+        self.skolemizer = Skolemizer()
         parsed_knowledge = []
         for clause in knowledge:
-            parsed_knowledge += to_cnf(clause)
+            parsed_knowledge += to_cnf(clause, self.skolemizer)
         self.base_knowledge = parsed_knowledge
 
     def prove(self, goal: Clause) -> Optional[Proof]:
@@ -40,7 +43,7 @@ class ResolutionProver:
 
     def prove_all(self, goal: Clause) -> list[Proof]:
         """Find all possible proofs for the given goal, sorted by similarity score"""
-        inverted_goals = to_cnf(Not(goal))
+        inverted_goals = to_cnf(Not(goal), self.skolemizer)
         proofs = []
         knowledge = self.base_knowledge + inverted_goals
         for inverted_goal in inverted_goals:
