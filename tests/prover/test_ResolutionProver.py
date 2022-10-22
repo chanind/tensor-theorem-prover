@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from amr_reasoner.prover.ResolutionProver import ResolutionProver
-from amr_reasoner.types import Variable, Predicate, Constant, Implies, And, Clause
+from amr_reasoner.types import Variable, Predicate, Constant, Implies, And, Not, Clause
+from tests.helpers import to_disj
 
 
 X = Variable("X")
@@ -44,9 +45,11 @@ def test_solve_basic_proof() -> None:
     prover = ResolutionProver(knowledge=knowledge)
     goal = grandpa_of(abe, bart)
 
-    proofs = prover.prove(goal)
+    proof = prover.prove(goal)
 
-    assert len(proofs) > 0
+    assert proof is not None
+    assert proof.similarity == 1.0
+    assert proof.goal == to_disj([Not(goal)])
 
 
 def test_fails_to_prove_unprovable_goal() -> None:
@@ -74,6 +77,4 @@ def test_fails_to_prove_unprovable_goal() -> None:
     prover = ResolutionProver(knowledge=knowledge)
     goal = grandpa_of(marge, bart)
 
-    proofs = prover.prove(goal)
-
-    assert len(proofs) == 0
+    assert prover.prove(goal) is None

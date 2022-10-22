@@ -3,7 +3,7 @@ import re
 from typing import Optional
 from amr_reasoner.normalize.to_cnf import CNFDisjunction, CNFLiteral
 
-from amr_reasoner.prover.types import ProofState, SubstitutionsMap
+from amr_reasoner.prover.ProofState import ProofState, SubstitutionsMap
 from amr_reasoner.similarity import SimilarityFunc
 from amr_reasoner.types import Atom, Term, Variable
 
@@ -13,9 +13,9 @@ from .unify import Unification, unify
 def resolve(
     source: CNFDisjunction,
     target: CNFDisjunction,
-    state: ProofState,
     min_similarity_threshold: float = 0.5,
     similarity_func: Optional[SimilarityFunc] = None,
+    parent: Optional[ProofState] = None,
 ) -> list[ProofState]:
     """Resolve a source and target CNF disjunction
 
@@ -40,19 +40,20 @@ def resolve(
                 similarity_func,
             )
             if unification:
+                print(source)
                 resolvent = _build_resolvent(
                     source, target, source_literal, target_literal, unification
                 )
                 new_state = ProofState(
-                    state.knowledge,
-                    source,
-                    target,
-                    resolvent,
-                    unification.source_substitutions,
-                    unification.target_substitutions,
-                    state.depth + 1,
-                    state.substitutions,
-                    state,
+                    source=source,
+                    target=target,
+                    resolvent=resolvent,
+                    source_unification_literal=source_literal,
+                    target_unification_literal=target_literal,
+                    source_substitutions=unification.source_substitutions,
+                    target_substitutions=unification.target_substitutions,
+                    similarity=unification.similarity,
+                    parent=parent,
                 )
                 states.append(new_state)
     return states

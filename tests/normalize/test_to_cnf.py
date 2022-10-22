@@ -1,8 +1,6 @@
 from __future__ import annotations
 from amr_reasoner.normalize.to_cnf import (
-    CNFDisjunction,
     to_cnf,
-    _element_to_cnf_literal,
 )
 from amr_reasoner.types import (
     And,
@@ -12,10 +10,10 @@ from amr_reasoner.types import (
     Implies,
     Or,
     Not,
-    Atom,
     Exists,
     Function,
 )
+from tests.helpers import to_disj_set
 
 pred1 = Predicate("pred1")
 pred2 = Predicate("pred2")
@@ -30,41 +28,34 @@ X = Variable("X")
 Y = Variable("Y")
 
 
-def to_cnf_helper(clauses: list[list[Atom | Not]]) -> set[CNFDisjunction]:
-    return set(
-        CNFDisjunction(frozenset(_element_to_cnf_literal(elm) for elm in clause))
-        for clause in clauses
-    )
-
-
 def test_to_cnf_simple_and() -> None:
     clause = And(pred1(const1), pred2(const2))
-    assert to_cnf(clause) == to_cnf_helper([[pred1(const1)], [pred2(const2)]])
+    assert to_cnf(clause) == to_disj_set([[pred1(const1)], [pred2(const2)]])
 
 
 def test_to_cnf_simple_or() -> None:
     clause = Or(pred1(const1), pred2(const2))
-    assert to_cnf(clause) == to_cnf_helper([[pred1(const1), pred2(const2)]])
+    assert to_cnf(clause) == to_disj_set([[pred1(const1), pred2(const2)]])
 
 
 def test_to_cnf_plain_atom() -> None:
     clause = pred1(const1)
-    assert to_cnf(clause) == to_cnf_helper([[pred1(const1)]])
+    assert to_cnf(clause) == to_disj_set([[pred1(const1)]])
 
 
 def test_to_cnf_not_atom() -> None:
     clause = Not(pred1(const1))
-    assert to_cnf(clause) == to_cnf_helper([[Not(pred1(const1))]])
+    assert to_cnf(clause) == to_disj_set([[Not(pred1(const1))]])
 
 
 def test_to_cnf_does_basic_deduplication_of_disjunctions() -> None:
     clause = And(pred1(const1), pred1(const1))
-    assert to_cnf(clause) == to_cnf_helper([[pred1(const1)]])
+    assert to_cnf(clause) == to_disj_set([[pred1(const1)]])
 
 
 def test_to_cnf_does_basic_deduplication_of_literals() -> None:
     clause = And(Or(pred1(const1), pred1(const1)), pred2(const1))
-    assert to_cnf(clause) == to_cnf_helper([[pred1(const1)], [pred2(const1)]])
+    assert to_cnf(clause) == to_disj_set([[pred1(const1)], [pred2(const1)]])
 
 
 def test_to_cnf_with_nested_functions() -> None:
