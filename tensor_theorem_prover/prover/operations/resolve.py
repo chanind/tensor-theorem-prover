@@ -78,8 +78,8 @@ def _build_resolvent(
         A proof state corresponding to the resolution.
     """
     # these are the literals that will be combined into the resolved disjunction
-    source_literals = [lit for lit in source.literals if lit != source_literal]
-    target_literals = [lit for lit in target.literals if lit != target_literal]
+    source_literals = [lit for lit in source.literals if lit is not source_literal]
+    target_literals = [lit for lit in target.literals if lit is not target_literal]
     # find all variables in source and target that aren't being substituted to avoid overlapping names
     unused_source_vars = _find_unused_variables(
         source_literals, unification.source_substitutions

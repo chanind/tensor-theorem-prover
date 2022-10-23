@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import numpy as np
+
 from tensor_theorem_prover.normalize.to_cnf import CNFDisjunction, CNFLiteral
 from tensor_theorem_prover.prover.operations.resolve import (
     _find_unused_variables,
@@ -132,6 +134,43 @@ def test_build_resolvent() -> None:
 
     expected_literals = [
         CNFLiteral(pred1(const1, const1), True),
+        CNFLiteral(pred2(const2, const2), False),
+    ]
+    assert resolvent == CNFDisjunction(expected_literals)
+
+
+def test_build_resolvent_with_similar_predicates_with_embeddings() -> None:
+    p1 = Predicate("p1", embedding=np.array([1, 2, 3]))
+    p1_same_name = Predicate("p1", embedding=np.array([1, 4, 3]))
+
+    source_literal = CNFLiteral(p1(Y, const2), False)
+    target_literal = CNFLiteral(p1(const1, X), True)
+
+    source_literals = [
+        source_literal,
+        CNFLiteral(p1_same_name(Y, const1), True),
+    ]
+    source_disjunction = CNFDisjunction(source_literals)
+    target_literals = [
+        target_literal,
+        CNFLiteral(pred2(const2, X), False),
+    ]
+    target_disjunction = CNFDisjunction(target_literals)
+    unification = Unification(
+        similarity=1.0,
+        source_substitutions={Y: const1},
+        target_substitutions={X: const2},
+    )
+    resolvent = _build_resolvent(
+        source=source_disjunction,
+        target=target_disjunction,
+        source_literal=source_literal,
+        target_literal=target_literal,
+        unification=unification,
+    )
+
+    expected_literals = [
+        CNFLiteral(p1_same_name(const1, const1), True),
         CNFLiteral(pred2(const2, const2), False),
     ]
     assert resolvent == CNFDisjunction(expected_literals)
