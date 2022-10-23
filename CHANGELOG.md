@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.2 (2022-10-23)
+### Fix
+* Adding py.typed file ([`c01f016`](https://github.com/chanind/tensor-theorem-prover/commit/c01f01604cc48c1f2f1fede77e1f6d8ad08bb189))
+
 ## v0.2.1 (2022-10-23)
 ### Fix
 * Adding typing_extensions dep explicitly ([`58e8340`](https://github.com/chanind/tensor-theorem-prover/commit/58e83401e64887635727c7db1ff508c47e4f826d))
