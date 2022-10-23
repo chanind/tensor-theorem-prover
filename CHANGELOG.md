@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.3 (2022-10-23)
+### Fix
+* Fixing bug when predicates with the same symbol occur in resolve with embeddings ([`17c138c`](https://github.com/chanind/tensor-theorem-prover/commit/17c138c64c8beb449b9e42847db343cb4b7d12e1))
+
 ## v0.2.2 (2022-10-23)
 ### Fix
 * Adding py.typed file ([`c01f016`](https://github.com/chanind/tensor-theorem-prover/commit/c01f01604cc48c1f2f1fede77e1f6d8ad08bb189))
