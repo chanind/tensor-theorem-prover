@@ -11,6 +11,7 @@ keywords = ["theorem-proving", "logic", "first-order", "unification", "reasoning
 [tool.poetry.dependencies]
 python = ">=3.7, <4.0"
 numpy = "^1.20.0"
+typing-extensions = ">=3.7.4"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.3"
