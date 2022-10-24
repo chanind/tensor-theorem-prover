@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.0 (2022-10-24)
+### Feature
+* Adding a 'max_similarity' helper to combine different similarity funcs ([`b92c35a`](https://github.com/chanind/tensor-theorem-prover/commit/b92c35ae06d707d462010f38e1d59b22f051d145))
+
 ## v0.2.3 (2022-10-23)
 ### Fix
 * Fixing bug when predicates with the same symbol occur in resolve with embeddings ([`17c138c`](https://github.com/chanind/tensor-theorem-prover/commit/17c138c64c8beb449b9e42847db343cb4b7d12e1))
