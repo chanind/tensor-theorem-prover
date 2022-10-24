@@ -17,7 +17,7 @@ from .types import (
     Clause,
 )
 
-from .similarity import cosine_similarity, symbol_compare
+from .similarity import cosine_similarity, symbol_compare, max_similarity
 
 __all__ = (
     "ResolutionProver",
@@ -35,4 +35,5 @@ __all__ = (
     "Function",
     "cosine_similarity",
     "symbol_compare",
+    "max_similarity",
 )

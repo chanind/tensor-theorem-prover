@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, Union
+from typing import Callable, Iterable, Union
 import numpy as np
 from numpy.linalg import norm
 
@@ -31,3 +31,10 @@ def cosine_similarity(
     return np.dot(item1.embedding, item2.embedding) / (
         norm(item1.embedding) * norm(item2.embedding)
     )
+
+
+def max_similarity(funcs: Iterable[SimilarityFunc]) -> SimilarityFunc:
+    """
+    returns a function that calls all the given functions and returns the maximum similarity score
+    """
+    return lambda item1, item2: max(func(item1, item2) for func in funcs)
