@@ -6,7 +6,12 @@ from tensor_theorem_prover.normalize import Skolemizer, CNFDisjunction, to_cnf
 from tensor_theorem_prover.prover.Proof import Proof
 from tensor_theorem_prover.prover.operations.resolve import resolve
 from tensor_theorem_prover.prover.ProofStep import ProofStep
-from tensor_theorem_prover.similarity import SimilarityFunc, cosine_similarity
+from tensor_theorem_prover.similarity import (
+    SimilarityCache,
+    SimilarityFunc,
+    cosine_similarity,
+    similarity_with_cache,
+)
 from tensor_theorem_prover.types import Clause, Not
 
 
@@ -17,6 +22,7 @@ class ResolutionProver:
     # MyPy freaks out if this isn't optional, see https://github.com/python/mypy/issues/708
     similarity_func: Optional[SimilarityFunc]
     skolemizer: Skolemizer
+    similarity_cache: SimilarityCache
 
     def __init__(
         self,
@@ -24,11 +30,18 @@ class ResolutionProver:
         max_proof_depth: int = 10,
         similarity_func: Optional[SimilarityFunc] = cosine_similarity,
         min_similarity_threshold: float = 0.5,
+        cache_similarity: bool = True,
     ) -> None:
         self.max_proof_depth = max_proof_depth
-        self.similarity_func = similarity_func
         self.min_similarity_threshold = min_similarity_threshold
         self.skolemizer = Skolemizer()
+        self.similarity_cache = {}
+        if cache_similarity and similarity_func:
+            self.similarity_func = similarity_with_cache(
+                similarity_func, self.similarity_cache
+            )
+        else:
+            self.similarity_func = similarity_func
         parsed_knowledge = []
         for clause in knowledge:
             parsed_knowledge += to_cnf(clause, self.skolemizer)
@@ -58,6 +71,9 @@ class ResolutionProver:
                 proofs.append(Proof(inverted_goal, similarity, leaf_proof_step))
 
         return sorted(proofs, key=lambda proof: proof.similarity, reverse=True)
+
+    def purge_similarity_cache(self) -> None:
+        self.similarity_cache.clear()
 
     def _prove_all_recursive(
         self,

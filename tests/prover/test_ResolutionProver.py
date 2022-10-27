@@ -193,3 +193,10 @@ def test_prove_all_with_multiple_valid_proof_paths_and_embedding_similarities() 
     assert proofs[-1].similarity < 0.99
     for proof in proofs:
         assert proof.substitutions == {X: abe}
+
+
+def test_purge_similarity_cache() -> None:
+    prover = ResolutionProver(knowledge=[])
+    prover.similarity_cache = {(1, 2): 0.5}
+    prover.purge_similarity_cache()
+    assert prover.similarity_cache == {}
