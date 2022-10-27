@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.0 (2022-10-27)
+### Feature
+* Adding similarity cache to speed up similarity calculations ([`5bd8c13`](https://github.com/chanind/tensor-theorem-prover/commit/5bd8c1386410d2b4bf04b59c999c4a83e3abd69b))
+
 ## v0.3.0 (2022-10-24)
 ### Feature
 * Adding a 'max_similarity' helper to combine different similarity funcs ([`b92c35a`](https://github.com/chanind/tensor-theorem-prover/commit/b92c35ae06d707d462010f38e1d59b22f051d145))
