@@ -42,10 +42,13 @@ class ResolutionProver:
             )
         else:
             self.similarity_func = similarity_func
-        parsed_knowledge = []
+        self.base_knowledge = []
+        self.extend_knowledge(knowledge)
+
+    def extend_knowledge(self, knowledge: Iterable[Clause]) -> None:
+        """Add more knowledge to the prover"""
         for clause in knowledge:
-            parsed_knowledge += to_cnf(clause, self.skolemizer)
-        self.base_knowledge = parsed_knowledge
+            self.base_knowledge.extend(to_cnf(clause, self.skolemizer))
 
     def prove(self, goal: Clause) -> Optional[Proof]:
         """Find the best proof for the given goal"""
@@ -99,8 +102,10 @@ class ResolutionProver:
                 if len(next_state.resolvent.literals) == 0:
                     successful_proof_leaf_steps.append(next_state)
                 else:
-                    successful_proof_leaf_steps += self._prove_all_recursive(
-                        next_state.resolvent, knowledge, depth + 1, next_state
+                    successful_proof_leaf_steps.extend(
+                        self._prove_all_recursive(
+                            next_state.resolvent, knowledge, depth + 1, next_state
+                        )
                     )
 
         return successful_proof_leaf_steps
