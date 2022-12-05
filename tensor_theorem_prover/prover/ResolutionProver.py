@@ -26,7 +26,7 @@ class ResolutionProver:
 
     def __init__(
         self,
-        knowledge: Iterable[Clause],
+        knowledge: Optional[Iterable[Clause]] = None,
         max_proof_depth: int = 10,
         similarity_func: Optional[SimilarityFunc] = cosine_similarity,
         min_similarity_threshold: float = 0.5,
@@ -43,25 +43,37 @@ class ResolutionProver:
         else:
             self.similarity_func = similarity_func
         self.base_knowledge = []
-        self.extend_knowledge(knowledge)
+        if knowledge is not None:
+            self.extend_knowledge(knowledge)
 
     def extend_knowledge(self, knowledge: Iterable[Clause]) -> None:
         """Add more knowledge to the prover"""
-        for clause in knowledge:
-            self.base_knowledge.extend(to_cnf(clause, self.skolemizer))
+        self.base_knowledge.extend(self._parse_knowledge(knowledge))
 
-    def prove(self, goal: Clause) -> Optional[Proof]:
+    def _parse_knowledge(self, knowledge: Iterable[Clause]) -> list[CNFDisjunction]:
+        """Parse the knowledge into CNF form"""
+        parsed_knowledge = []
+        for clause in knowledge:
+            parsed_knowledge.extend(to_cnf(clause, self.skolemizer))
+        return parsed_knowledge
+
+    def prove(
+        self, goal: Clause, extra_knowledge: Optional[Iterable[Clause]] = None
+    ) -> Optional[Proof]:
         """Find the best proof for the given goal"""
-        proofs = self.prove_all(goal)
+        proofs = self.prove_all(goal, extra_knowledge)
         if proofs:
             return proofs[0]
         return None
 
-    def prove_all(self, goal: Clause) -> list[Proof]:
+    def prove_all(
+        self, goal: Clause, extra_knowledge: Optional[Iterable[Clause]] = None
+    ) -> list[Proof]:
         """Find all possible proofs for the given goal, sorted by similarity score"""
         inverted_goals = to_cnf(Not(goal), self.skolemizer)
+        parsed_extra_knowledge = self._parse_knowledge(extra_knowledge or [])
         proofs = []
-        knowledge = self.base_knowledge + inverted_goals
+        knowledge = self.base_knowledge + parsed_extra_knowledge + inverted_goals
         for inverted_goal in inverted_goals:
             leaf_proof_steps = self._prove_all_recursive(inverted_goal, knowledge)
             for leaf_proof_step in leaf_proof_steps:
