@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.0 (2022-12-05)
+### Feature
+* Allow providing extra knowledge when proving ([`f1e53c8`](https://github.com/chanind/tensor-theorem-prover/commit/f1e53c8a4d782f256e640646f3f78c6423bb9857))
+
 ## v0.5.0 (2022-12-05)
 ### Feature
 * Adding ResolutionProver.extend_knowledge method to add knowledge to the prover later ([`d21dd91`](https://github.com/chanind/tensor-theorem-prover/commit/d21dd911f994abb69fe7d19a2c8e143dcc3192fe))
