@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.2 (2022-12-07)
+### Fix
+* Exporting types for SimilarityFunc ([`6432960`](https://github.com/chanind/tensor-theorem-prover/commit/64329605e85c694079304da914bf12be35618250))
+
 ## v0.6.1 (2022-12-07)
 ### Fix
 * Exporting types for Proof and ProofStep ([`c909c6f`](https://github.com/chanind/tensor-theorem-prover/commit/c909c6f281433c94f76707be34be91909807e243))
