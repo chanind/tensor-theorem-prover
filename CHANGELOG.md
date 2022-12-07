@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.1 (2022-12-07)
+### Fix
+* Exporting types for Proof and ProofStep ([`c909c6f`](https://github.com/chanind/tensor-theorem-prover/commit/c909c6f281433c94f76707be34be91909807e243))
+
 ## v0.6.0 (2022-12-05)
 ### Feature
 * Allow providing extra knowledge when proving ([`f1e53c8`](https://github.com/chanind/tensor-theorem-prover/commit/f1e53c8a4d782f256e640646f3f78c6423bb9857))
