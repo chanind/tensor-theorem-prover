@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tensor-theorem-prover"
-version = "0.6.2"
+version = "0.7.0"
 description = "Customizable first-order logic theorem prover supporting approximate vector similarity in unification"
 license = "MIT"
 readme = "README.md"

@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.0 (2022-12-08)
+### Feature
+* Adding option to reset the ResolutionProver ([`8649c91`](https://github.com/chanind/tensor-theorem-prover/commit/8649c91e6769828bb14f5ab7fe7d828a9b0637ff))
+
 ## v0.6.2 (2022-12-07)
 ### Fix
 * Exporting types for SimilarityFunc ([`6432960`](https://github.com/chanind/tensor-theorem-prover/commit/64329605e85c694079304da914bf12be35618250))
