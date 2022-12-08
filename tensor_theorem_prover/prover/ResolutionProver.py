@@ -90,6 +90,11 @@ class ResolutionProver:
     def purge_similarity_cache(self) -> None:
         self.similarity_cache.clear()
 
+    def reset(self) -> None:
+        """Clear all knowledge from the prover and wipe the similarity cache"""
+        self.base_knowledge = []
+        self.purge_similarity_cache()
+
     def _prove_all_recursive(
         self,
         goal: CNFDisjunction,

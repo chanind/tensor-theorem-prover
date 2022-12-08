@@ -200,3 +200,11 @@ def test_purge_similarity_cache() -> None:
     prover.similarity_cache = {(1, 2): 0.5}
     prover.purge_similarity_cache()
     assert prover.similarity_cache == {}
+
+
+def test_reset() -> None:
+    prover = ResolutionProver(knowledge=[parent_of(homer, bart)])
+    prover.similarity_cache = {(1, 2): 0.5}
+    prover.reset()
+    assert prover.similarity_cache == {}
+    assert prover.base_knowledge == []
