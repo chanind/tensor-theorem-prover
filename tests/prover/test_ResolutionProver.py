@@ -31,6 +31,48 @@ marge = Constant("marge")
 mona = Constant("mona")
 abe = Constant("abe")
 
+# amr-inspired logic
+arg0 = Predicate("arg0")
+arg1 = Predicate("arg1")
+you = Predicate("you")
+commit = Predicate("commit")
+follow_through = Predicate("follow_through")
+good = Predicate("good")
+bad = Predicate("bad")
+y = Constant("y")
+x = Constant("x")
+z = Constant("z")
+
+# amr-inspired knowledge
+amr_knowledge: list[Clause] = [
+    # ¬(follow-through-07(X) ∧ :ARG0(X,Y) ∧ you(Y) ∧ :ARG1(X,Z) ∧ commit-01(Z) ∧ :ARG1(Z,Y)) → (¬good(X) ∧ bad(X))
+    # not following through on your commitments is bad and not good
+    Implies(
+        Not(
+            And(
+                follow_through(X),
+                arg0(X, Y),
+                you(Y),
+                arg1(X, Z),
+                commit(Z),
+                arg1(Z, Y),
+            )
+        ),
+        And(Not(good(X)), bad(X)),
+    ),
+    # you don't follow through on your commitments
+    # ¬(follow-through-07(x) ∧ :ARG0(x,y) ∧ you(y) ∧ :ARG1(x,z) ∧ commit-01(z) ∧ :ARG1(z,y))
+    Not(
+        And(
+            follow_through(x),
+            arg0(x, y),
+            you(y),
+            arg1(x, z),
+            commit(z),
+            arg1(z, y),
+        )
+    ),
+]
 
 grandpa_of_def = Implies(
     And(father_of(X, Z), parent_of(Z, Y)),
@@ -122,6 +164,34 @@ def test_solve_proof_with_variables() -> None:
     assert proof.goal == to_disj([Not(goal)])
     assert proof.substitutions == {X: abe}
     assert proof.depth == 3
+
+
+def test_solve_proof_beyond_horn_clauses() -> None:
+    prover = ResolutionProver(knowledge=amr_knowledge, max_proof_depth=20)
+
+    goal = bad(X)
+    proof = prover.prove(goal)
+
+    assert proof is not None
+    assert proof.similarity == 1.0
+    assert proof.substitutions == {X: x}
+    assert proof.depth == 12
+
+
+def test_max_resolvent_width() -> None:
+    goal = bad(X)
+
+    low_width_prover = ResolutionProver(
+        knowledge=amr_knowledge, max_resolvent_width=3, max_proof_depth=20
+    )
+    proof = low_width_prover.prove(goal)
+    assert proof is None
+
+    high_width_prover = ResolutionProver(
+        knowledge=amr_knowledge, max_resolvent_width=10, max_proof_depth=20
+    )
+    proof = high_width_prover.prove(goal)
+    assert proof is not None
 
 
 def test_prove_all_doesnt_duplicate_proofs() -> None:

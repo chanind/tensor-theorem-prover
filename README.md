@@ -1,4 +1,5 @@
 # Tensor Theorem Prover
+
 [![ci](https://img.shields.io/github/workflow/status/chanind/tensor-theorem-prover/CI/main)](https://github.com/chanind/tensor-theorem-prover)
 [![Codecov](https://img.shields.io/codecov/c/github/chanind/tensor-theorem-prover/main)](https://codecov.io/gh/chanind/tensor-theorem-prover)
 [![PyPI](https://img.shields.io/pypi/v/tensor-theorem-prover?color=blue)](https://pypi.org/project/tensor-theorem-prover/)
@@ -170,6 +171,14 @@ By default, the ResolutionProver will abort proofs after a depth of 10. You can 
 
 ```python
 prover = ResolutionProver(knowledge=knowledge, max_proof_depth=10)
+```
+
+### Max resolvent width
+
+By default, the ResolutionProver has no limit on how wide resolvents can get during the proving process. If the proofs are running too slowly, you can try to set `max_resolvent_width` to limit how many literals intermediate resolvents are allowed to contain. This should narrow the search tree, but has the trade-off of not finding proofs if the proof requires unifying together a lot of very wide clauses.
+
+```python
+prover = ResolutionProver(knowledge=knowledge, max_resolvent_width=10)
 ```
 
 ## Acknowledgements

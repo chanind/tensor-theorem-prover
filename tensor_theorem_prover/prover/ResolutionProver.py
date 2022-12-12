@@ -18,6 +18,7 @@ from tensor_theorem_prover.types import Clause, Not
 class ResolutionProver:
     base_knowledge: list[CNFDisjunction]
     max_proof_depth: int
+    max_resolvent_width: Optional[int]
     min_similarity_threshold: float
     # MyPy freaks out if this isn't optional, see https://github.com/python/mypy/issues/708
     similarity_func: Optional[SimilarityFunc]
@@ -28,11 +29,13 @@ class ResolutionProver:
         self,
         knowledge: Optional[Iterable[Clause]] = None,
         max_proof_depth: int = 10,
+        max_resolvent_width: Optional[int] = None,
         similarity_func: Optional[SimilarityFunc] = cosine_similarity,
         min_similarity_threshold: float = 0.5,
         cache_similarity: bool = True,
     ) -> None:
         self.max_proof_depth = max_proof_depth
+        self.max_resolvent_width = max_resolvent_width
         self.min_similarity_threshold = min_similarity_threshold
         self.skolemizer = Skolemizer()
         self.similarity_cache = {}
@@ -106,6 +109,14 @@ class ResolutionProver:
             return []
         successful_proof_leaf_steps = []
         for clause in knowledge:
+            # resolution always ends up removing a literal from the clause and the goal, and combining the remaining literals
+            # so we know what the length of the resolvent will be before we even try to resolve
+            if (
+                self.max_resolvent_width
+                and len(clause.literals) + len(goal.literals) - 2
+                > self.max_resolvent_width
+            ):
+                continue
             next_states = resolve(
                 goal,
                 clause,
