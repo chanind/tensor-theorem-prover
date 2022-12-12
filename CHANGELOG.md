@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.0 (2022-12-12)
+### Feature
+* Adding a max_resolvent_width option to speed up solving ([`6adc64e`](https://github.com/chanind/tensor-theorem-prover/commit/6adc64eea9c89e8bbf0b435f1e285af70ed8e41b))
+
 ## v0.7.0 (2022-12-08)
 ### Feature
 * Adding option to reset the ResolutionProver ([`8649c91`](https://github.com/chanind/tensor-theorem-prover/commit/8649c91e6769828bb14f5ab7fe7d828a9b0637ff))
