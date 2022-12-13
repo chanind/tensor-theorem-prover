@@ -36,7 +36,7 @@ def unify(
     similarity = adjusted_similarity_func(source.predicate, target.predicate)
 
     # abort early if the predicate similarity is too low
-    if similarity < min_similarity_threshold:
+    if similarity <= min_similarity_threshold:
         return None
 
     return _unify_terms(
@@ -174,7 +174,7 @@ def _unify_term_pair(
                     # TODO: should we add a separate similarity func for constants which is bidirectional?
                     similarity_func(cur_source_term, cur_target_term),
                 )
-                if cur_similarity < min_similarity_threshold:
+                if cur_similarity <= min_similarity_threshold:
                     return None
         elif isinstance(cur_source_term, Variable):
             if isinstance(cur_target_term, Variable):

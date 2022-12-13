@@ -265,6 +265,37 @@ def test_prove_all_with_multiple_valid_proof_paths_and_embedding_similarities() 
         assert proof.substitutions == {X: abe}
 
 
+def test_prove_all_can_limit_the_number_of_returned_proofs() -> None:
+    father_of_embed = Predicate("father_of", np.array([0.99, 0.25, 1.17]))
+    dad_of_embed = Predicate("dad_of", np.array([1.0, 0.0, 1.0]))
+
+    grandpa_of_def_embed = Implies(
+        And(father_of_embed(X, Z), father_of_embed(Z, Y)),
+        grandpa_of(X, Y),
+    )
+    knowledge: list[Clause] = [
+        # base facts
+        father_of_embed(homer, bart),
+        dad_of_embed(homer, bart),
+        father_of_embed(abe, homer),
+        dad_of_embed(abe, homer),
+        # theorems
+        grandpa_of_def_embed,
+    ]
+
+    prover = ResolutionProver(knowledge=knowledge)
+
+    goal = grandpa_of(X, bart)
+
+    proofs = prover.prove_all(goal, max_proofs=2)
+    assert len(proofs) == 2
+    # proofs should be sorted by similarity
+    assert proofs[0].similarity == pytest.approx(1.0)
+    assert proofs[-1].similarity < 0.99
+    for proof in proofs:
+        assert proof.substitutions == {X: abe}
+
+
 def test_purge_similarity_cache() -> None:
     prover = ResolutionProver(knowledge=[])
     prover.similarity_cache = {(1, 2): 0.5}

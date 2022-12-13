@@ -4,6 +4,7 @@ from typing import Iterable, Optional
 
 from tensor_theorem_prover.normalize import Skolemizer, CNFDisjunction, to_cnf
 from tensor_theorem_prover.prover.Proof import Proof
+from tensor_theorem_prover.prover.ProofStepAccumulator import ProofStepAccumulator
 from tensor_theorem_prover.prover.operations.resolve import resolve
 from tensor_theorem_prover.prover.ProofStep import ProofStep
 from tensor_theorem_prover.similarity import (
@@ -64,28 +65,26 @@ class ResolutionProver:
         self, goal: Clause, extra_knowledge: Optional[Iterable[Clause]] = None
     ) -> Optional[Proof]:
         """Find the best proof for the given goal"""
-        proofs = self.prove_all(goal, extra_knowledge)
+        proofs = self.prove_all(goal, extra_knowledge, max_proofs=1)
         if proofs:
             return proofs[0]
         return None
 
     def prove_all(
-        self, goal: Clause, extra_knowledge: Optional[Iterable[Clause]] = None
+        self,
+        goal: Clause,
+        extra_knowledge: Optional[Iterable[Clause]] = None,
+        max_proofs: Optional[int] = None,
     ) -> list[Proof]:
         """Find all possible proofs for the given goal, sorted by similarity score"""
         inverted_goals = to_cnf(Not(goal), self.skolemizer)
         parsed_extra_knowledge = self._parse_knowledge(extra_knowledge or [])
         proofs = []
         knowledge = self.base_knowledge + parsed_extra_knowledge + inverted_goals
+        leaf_proof_steps_acc = ProofStepAccumulator(max_proofs)
         for inverted_goal in inverted_goals:
-            leaf_proof_steps = self._prove_all_recursive(inverted_goal, knowledge)
-            for leaf_proof_step in leaf_proof_steps:
-                # TODO: Make combining similarities customizable rather than always taking the minimum
-                similarity = leaf_proof_step.similarity
-                cur_state = leaf_proof_step
-                while cur_state.parent:
-                    similarity = min(similarity, cur_state.parent.similarity)
-                    cur_state = cur_state.parent
+            self._prove_all_recursive(inverted_goal, knowledge, leaf_proof_steps_acc)
+            for similarity, leaf_proof_step in leaf_proof_steps_acc.scored_proof_steps:
                 proofs.append(Proof(inverted_goal, similarity, leaf_proof_step))
 
         return sorted(proofs, key=lambda proof: proof.similarity, reverse=True)
@@ -102,12 +101,12 @@ class ResolutionProver:
         self,
         goal: CNFDisjunction,
         knowledge: Iterable[CNFDisjunction],
+        leaf_proof_steps_acc: ProofStepAccumulator,
         depth: int = 0,
         parent_state: Optional[ProofStep] = None,
-    ) -> list[ProofStep]:
+    ) -> None:
         if parent_state and depth >= self.max_proof_depth:
-            return []
-        successful_proof_leaf_steps = []
+            return
         for clause in knowledge:
             # resolution always ends up removing a literal from the clause and the goal, and combining the remaining literals
             # so we know what the length of the resolvent will be before we even try to resolve
@@ -117,10 +116,13 @@ class ResolutionProver:
                 > self.max_resolvent_width
             ):
                 continue
+            min_similarity_threshold = self.min_similarity_threshold
+            if leaf_proof_steps_acc.is_full():
+                min_similarity_threshold = leaf_proof_steps_acc.min_similarity
             next_states = resolve(
                 goal,
                 clause,
-                min_similarity_threshold=self.min_similarity_threshold,
+                min_similarity_threshold=min_similarity_threshold,
                 similarity_func=self.similarity_func,
                 parent=parent_state,
             )
@@ -128,12 +130,12 @@ class ResolutionProver:
                 if next_state.resolvent is None:
                     raise ValueError("Resolvent was unexpectedly not present")
                 if len(next_state.resolvent.literals) == 0:
-                    successful_proof_leaf_steps.append(next_state)
+                    leaf_proof_steps_acc.add_proof(next_state)
                 else:
-                    successful_proof_leaf_steps.extend(
-                        self._prove_all_recursive(
-                            next_state.resolvent, knowledge, depth + 1, next_state
-                        )
+                    self._prove_all_recursive(
+                        next_state.resolvent,
+                        knowledge,
+                        leaf_proof_steps_acc,
+                        depth + 1,
+                        next_state,
                     )
-
-        return successful_proof_leaf_steps
