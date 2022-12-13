@@ -4,6 +4,7 @@ from typing import Iterable, Optional
 
 from tensor_theorem_prover.normalize import Skolemizer, CNFDisjunction, to_cnf
 from tensor_theorem_prover.prover.Proof import Proof
+from tensor_theorem_prover.prover.ProofStats import ProofStats
 from tensor_theorem_prover.prover.ProofStepAccumulator import ProofStepAccumulator
 from tensor_theorem_prover.prover.operations.resolve import resolve
 from tensor_theorem_prover.prover.ProofStep import ProofStep
@@ -25,6 +26,7 @@ class ResolutionProver:
     similarity_func: Optional[SimilarityFunc]
     skolemizer: Skolemizer
     similarity_cache: SimilarityCache
+    cache_similarity: bool
 
     def __init__(
         self,
@@ -40,12 +42,8 @@ class ResolutionProver:
         self.min_similarity_threshold = min_similarity_threshold
         self.skolemizer = Skolemizer()
         self.similarity_cache = {}
-        if cache_similarity and similarity_func:
-            self.similarity_func = similarity_with_cache(
-                similarity_func, self.similarity_cache
-            )
-        else:
-            self.similarity_func = similarity_func
+        self.cache_similarity = cache_similarity
+        self.similarity_func = similarity_func
         self.base_knowledge = []
         if knowledge is not None:
             self.extend_knowledge(knowledge)
@@ -77,17 +75,59 @@ class ResolutionProver:
         max_proofs: Optional[int] = None,
     ) -> list[Proof]:
         """Find all possible proofs for the given goal, sorted by similarity score"""
+        proofs, _ = self.prove_all_with_stats(
+            goal, extra_knowledge, max_proofs=max_proofs
+        )
+        return proofs
+
+    def prove_all_with_stats(
+        self,
+        goal: Clause,
+        extra_knowledge: Optional[Iterable[Clause]] = None,
+        max_proofs: Optional[int] = None,
+    ) -> tuple[list[Proof], ProofStats]:
+        """
+        Find all possible proofs for the given goal, sorted by similarity score.
+        Return the proofs and the stats for the proof search.
+        """
         inverted_goals = to_cnf(Not(goal), self.skolemizer)
         parsed_extra_knowledge = self._parse_knowledge(extra_knowledge or [])
         proofs = []
         knowledge = self.base_knowledge + parsed_extra_knowledge + inverted_goals
         leaf_proof_steps_acc = ProofStepAccumulator(max_proofs)
-        for inverted_goal in inverted_goals:
-            self._prove_all_recursive(inverted_goal, knowledge, leaf_proof_steps_acc)
-            for similarity, leaf_proof_step in leaf_proof_steps_acc.scored_proof_steps:
-                proofs.append(Proof(inverted_goal, similarity, leaf_proof_step))
+        proof_stats = ProofStats()
+        similarity_func = self.similarity_func
+        if self.cache_similarity and self.similarity_func:
+            similarity_func = similarity_with_cache(
+                self.similarity_func, self.similarity_cache, proof_stats
+            )
 
-        return sorted(proofs, key=lambda proof: proof.similarity, reverse=True)
+        for inverted_goal in inverted_goals:
+            self._prove_all_recursive(
+                inverted_goal,
+                knowledge,
+                similarity_func,
+                leaf_proof_steps_acc,
+                proof_stats,
+            )
+            for (
+                similarity,
+                leaf_proof_step,
+                leaf_proof_stats,
+            ) in leaf_proof_steps_acc.scored_proof_steps:
+                proofs.append(
+                    Proof(
+                        inverted_goal,
+                        similarity,
+                        leaf_proof_step,
+                        leaf_proof_stats,
+                    )
+                )
+
+        return (
+            sorted(proofs, key=lambda proof: proof.similarity, reverse=True),
+            proof_stats,
+        )
 
     def purge_similarity_cache(self) -> None:
         self.similarity_cache.clear()
@@ -101,12 +141,16 @@ class ResolutionProver:
         self,
         goal: CNFDisjunction,
         knowledge: Iterable[CNFDisjunction],
+        similarity_func: Optional[SimilarityFunc],
         leaf_proof_steps_acc: ProofStepAccumulator,
+        proof_stats: ProofStats,
         depth: int = 0,
         parent_state: Optional[ProofStep] = None,
     ) -> None:
         if parent_state and depth >= self.max_proof_depth:
             return
+        if depth >= proof_stats.max_depth_seen:
+            proof_stats.max_depth_seen = depth
         for clause in knowledge:
             # resolution always ends up removing a literal from the clause and the goal, and combining the remaining literals
             # so we know what the length of the resolvent will be before we even try to resolve
@@ -119,23 +163,32 @@ class ResolutionProver:
             min_similarity_threshold = self.min_similarity_threshold
             if leaf_proof_steps_acc.is_full():
                 min_similarity_threshold = leaf_proof_steps_acc.min_similarity
+            proof_stats.attempted_resolutions += 1
             next_states = resolve(
                 goal,
                 clause,
                 min_similarity_threshold=min_similarity_threshold,
-                similarity_func=self.similarity_func,
+                similarity_func=similarity_func,
                 parent=parent_state,
+                proof_stats=proof_stats,
             )
+            if len(next_states) > 0:
+                proof_stats.successful_resolutions += 1
             for next_state in next_states:
                 if next_state.resolvent is None:
                     raise ValueError("Resolvent was unexpectedly not present")
                 if len(next_state.resolvent.literals) == 0:
-                    leaf_proof_steps_acc.add_proof(next_state)
+                    leaf_proof_steps_acc.add_proof(next_state, proof_stats)
                 else:
+                    resolvent_width = len(next_state.resolvent.literals)
+                    if resolvent_width >= proof_stats.max_resolvent_width_seen:
+                        proof_stats.max_resolvent_width_seen = resolvent_width
                     self._prove_all_recursive(
                         next_state.resolvent,
                         knowledge,
+                        similarity_func,
                         leaf_proof_steps_acc,
+                        proof_stats,
                         depth + 1,
                         next_state,
                     )

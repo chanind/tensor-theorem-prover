@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, Optional, Tuple
 from typing_extensions import Literal
+from tensor_theorem_prover.prover.ProofStats import ProofStats
 
 from tensor_theorem_prover.prover.ProofStep import SubstitutionsMap
 from tensor_theorem_prover.similarity import SimilarityFunc, symbol_compare
@@ -20,6 +21,7 @@ def unify(
     target: Atom,
     min_similarity_threshold: float = 0.5,
     similarity_func: Optional[SimilarityFunc] = None,
+    proof_stats: Optional[ProofStats] = None,
 ) -> Unification | None:
     """
     Fuzzy-optional implementation of unify
@@ -34,6 +36,8 @@ def unify(
     # if there is no comparison function provided, just use symbol compare (non-fuzzy comparisons)
     adjusted_similarity_func = similarity_func or symbol_compare
     similarity = adjusted_similarity_func(source.predicate, target.predicate)
+    if proof_stats:
+        proof_stats.similarity_comparisons += 1
 
     # abort early if the predicate similarity is too low
     if similarity <= min_similarity_threshold:
@@ -45,6 +49,7 @@ def unify(
         similarity,
         adjusted_similarity_func,
         min_similarity_threshold,
+        proof_stats,
     )
 
 
@@ -60,6 +65,7 @@ def _unify_terms(
     similarity: float,
     similarity_func: SimilarityFunc,
     min_similarity_threshold: float,
+    proof_stats: Optional[ProofStats],
 ) -> Unification | None:
     """
     Unification with optional vector similarity, based on Robinson's 1965 algorithm, as described in:
@@ -76,6 +82,7 @@ def _unify_terms(
             cur_similarity,
             similarity_func,
             min_similarity_threshold,
+            proof_stats,
         )
         if result is None:
             return None
@@ -146,6 +153,7 @@ def _unify_term_pair(
     similarity: float,
     similarity_func: SimilarityFunc,
     min_similarity_threshold: float,
+    proof_stats: Optional[ProofStats],
 ) -> tuple[SubstitutionSet, float] | None:
     """
     Check if a pair of terms can be unified, part of Robinson's 1965 algorithm
@@ -174,6 +182,8 @@ def _unify_term_pair(
                     # TODO: should we add a separate similarity func for constants which is bidirectional?
                     similarity_func(cur_source_term, cur_target_term),
                 )
+                if proof_stats:
+                    proof_stats.similarity_comparisons += 1
                 if cur_similarity <= min_similarity_threshold:
                     return None
         elif isinstance(cur_source_term, Variable):
