@@ -3,7 +3,7 @@ import re
 from typing import Optional
 
 from tensor_theorem_prover.normalize.to_cnf import CNFDisjunction, CNFLiteral
-from tensor_theorem_prover.prover.ProofStats import ProofStats
+from tensor_theorem_prover.prover.ProofContext import ProofContext
 from tensor_theorem_prover.prover.ProofStep import ProofStep, SubstitutionsMap
 from tensor_theorem_prover.similarity import SimilarityFunc
 from tensor_theorem_prover.types import Atom, Term, Variable
@@ -14,10 +14,9 @@ from .unify import Unification, unify
 def resolve(
     source: CNFDisjunction,
     target: CNFDisjunction,
-    min_similarity_threshold: float = 0.5,
+    ctx: ProofContext,
     similarity_func: Optional[SimilarityFunc] = None,
     parent: Optional[ProofStep] = None,
-    proof_stats: Optional[ProofStats] = None,
 ) -> list[ProofStep]:
     """Resolve a source and target CNF disjunction
 
@@ -35,18 +34,15 @@ def resolve(
         # we can only resolve literals with the opposite polarity
         if source_literal.polarity == target_literal.polarity:
             continue
-        if proof_stats:
-            proof_stats.attempted_unifications += 1
+        ctx.stats.attempted_unifications += 1
         unification = unify(
             source_literal.atom,
             target_literal.atom,
-            min_similarity_threshold,
+            ctx,
             similarity_func,
-            proof_stats,
         )
         if unification:
-            if proof_stats:
-                proof_stats.successful_unifications += 1
+            ctx.stats.successful_unifications += 1
 
             resolvent = _build_resolvent(
                 source, target, source_literal, target_literal, unification
