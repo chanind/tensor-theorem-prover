@@ -28,13 +28,7 @@ class ProofContext:
     def record_leaf_proof(self, proof_step: ProofStep) -> None:
         """Add a leaf proof step to the accumulator"""
 
-        # TODO: Make combining similarities customizable rather than always taking the minimum
-        similarity = proof_step.similarity
-        cur_step = proof_step
-        while cur_step.parent:
-            similarity = min(similarity, cur_step.parent.similarity)
-            cur_step = cur_step.parent
-
+        similarity = proof_step.running_similarity
         # make sure to clone the stats before appending, since the stats will continue to get mutated after this
         self.scored_proof_steps.append((similarity, proof_step, copy(self.stats)))
         self.scored_proof_steps.sort(key=lambda x: x[0], reverse=True)

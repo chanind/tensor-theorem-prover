@@ -147,8 +147,13 @@ class ResolutionProver:
         depth: int = 0,
         parent_state: Optional[ProofStep] = None,
     ) -> None:
-        if parent_state and depth >= self.max_proof_depth:
-            return
+        if parent_state:
+            if depth >= self.max_proof_depth:
+                return
+            # the similarity moving forward can never exceed the running similarity of the parent node,
+            # so if we've already seen a proof that's better than the parent, we can just stop here
+            if parent_state.running_similarity <= ctx.min_similarity_threshold:
+                return
         if depth >= ctx.stats.max_depth_seen:
             # add 1 to match the depth stat seen in proofs. It's strange if the proof has depth 12, but max_depth_seen is 11
             ctx.stats.max_depth_seen = depth + 1

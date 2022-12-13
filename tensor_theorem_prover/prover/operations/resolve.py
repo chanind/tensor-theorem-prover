@@ -56,6 +56,12 @@ def resolve(
                 source_substitutions=unification.source_substitutions,
                 target_substitutions=unification.target_substitutions,
                 similarity=unification.similarity,
+                # TODO: Make combining similarities customizable rather than always taking the minimum
+                running_similarity=min(
+                    unification.similarity, parent.running_similarity
+                )
+                if parent
+                else unification.similarity,
                 parent=parent,
             )
             next_steps.append(step)

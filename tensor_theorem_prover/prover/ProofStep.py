@@ -24,6 +24,8 @@ class ProofStep:
     target_substitutions: SubstitutionsMap
     resolvent: CNFDisjunction
     similarity: float
+    # this refers to the overall similarity of this step and all of its parents
+    running_similarity: float
     parent: Optional[ProofStep] = None
 
     def __str__(self) -> str:
