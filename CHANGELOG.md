@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.10.0 (2022-12-13)
+### Feature
+* Track proof stats to make performance tweaks easier ([#1](https://github.com/chanind/tensor-theorem-prover/issues/1)) ([`b52192f`](https://github.com/chanind/tensor-theorem-prover/commit/b52192fd6499520c36892918aef1a8f18f2f2072))
+
 ## v0.9.0 (2022-12-13)
 ### Feature
 * Allow capping number of returned proofs to boost performance ([`dd92a22`](https://github.com/chanind/tensor-theorem-prover/commit/dd92a220c0034f84c696c630c5f3adff96751ada))
