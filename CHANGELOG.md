@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.10.1 (2022-12-13)
+### Fix
+* Refactor min similarity tracking for better performance ([`256ca65`](https://github.com/chanind/tensor-theorem-prover/commit/256ca65a8abdfb0e98f5546e350442a5ba98dfa2))
+
 ## v0.10.0 (2022-12-13)
 ### Feature
 * Track proof stats to make performance tweaks easier ([#1](https://github.com/chanind/tensor-theorem-prover/issues/1)) ([`b52192f`](https://github.com/chanind/tensor-theorem-prover/commit/b52192fd6499520c36892918aef1a8f18f2f2072))
