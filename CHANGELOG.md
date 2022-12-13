@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.9.0 (2022-12-13)
+### Feature
+* Allow capping number of returned proofs to boost performance ([`dd92a22`](https://github.com/chanind/tensor-theorem-prover/commit/dd92a220c0034f84c696c630c5f3adff96751ada))
+
 ## v0.8.0 (2022-12-12)
 ### Feature
 * Adding a max_resolvent_width option to speed up solving ([`6adc64e`](https://github.com/chanind/tensor-theorem-prover/commit/6adc64eea9c89e8bbf0b435f1e285af70ed8e41b))
