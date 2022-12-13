@@ -255,7 +255,7 @@ def test_prove_all_with_multiple_valid_proof_paths_and_embedding_similarities() 
 
     goal = grandpa_of(X, bart)
 
-    proofs = prover.prove_all(goal)
+    proofs, stats = prover.prove_all_with_stats(goal)
     # should have a separate proof for each combo of dad/father in grandpa_of
     assert len(proofs) == 4
     # proofs should be sorted by similarity
@@ -263,6 +263,23 @@ def test_prove_all_with_multiple_valid_proof_paths_and_embedding_similarities() 
     assert proofs[-1].similarity < 0.99
     for proof in proofs:
         assert proof.substitutions == {X: abe}
+
+    # make sure that stats look sane
+    assert proofs[0].stats.successful_unifications < stats.successful_unifications
+    assert proofs[0].stats.attempted_unifications < stats.attempted_unifications
+    assert proofs[0].stats.attempted_resolutions < stats.attempted_resolutions
+    assert proofs[0].stats.successful_resolutions < stats.successful_resolutions
+    assert proofs[0].stats.similarity_comparisons < stats.similarity_comparisons
+    assert proofs[0].stats.similarity_cache_hits < stats.similarity_cache_hits
+
+    assert stats.attempted_resolutions > 0
+    assert stats.attempted_unifications > 0
+    assert stats.successful_resolutions > 0
+    assert stats.successful_unifications > 0
+    assert stats.similarity_comparisons > 0
+    assert stats.similarity_cache_hits > 0
+    assert stats.max_resolvent_width_seen > 0
+    assert stats.max_depth_seen > 0
 
 
 def test_prove_all_can_limit_the_number_of_returned_proofs() -> None:

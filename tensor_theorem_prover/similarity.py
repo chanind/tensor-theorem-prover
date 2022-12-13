@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Callable, Dict, Iterable, Tuple, Union
 import numpy as np
 from numpy.linalg import norm
+from tensor_theorem_prover.prover.ProofStats import ProofStats
 
 from tensor_theorem_prover.types.Constant import Constant
 from tensor_theorem_prover.types.Predicate import Predicate
@@ -17,6 +18,7 @@ SimilarityCache = Dict[Tuple[Union[str, int], Union[str, int]], float]
 def similarity_with_cache(
     similarity: SimilarityFunc,
     cache: SimilarityCache,
+    proof_stats: ProofStats,
 ) -> SimilarityFunc:
     """cache all similarity scores by the object id of the items being compared"""
 
@@ -26,7 +28,9 @@ def similarity_with_cache(
         key1: str | int = item1.symbol if item1.embedding is None else id(item1)
         key2: str | int = item2.symbol if item2.embedding is None else id(item2)
         key = (key1, key2)
-        if key not in cache:
+        if key in cache:
+            proof_stats.similarity_cache_hits += 1
+        else:
             cache[key] = similarity(item1, item2)
         return cache[key]
 

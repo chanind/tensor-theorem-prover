@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from textwrap import indent
 
 from tensor_theorem_prover.normalize.to_cnf import CNFDisjunction
+from tensor_theorem_prover.prover.ProofStats import ProofStats
 from tensor_theorem_prover.types import Constant, Variable, Term
 from tensor_theorem_prover.types.Function import BoundFunction
 from tensor_theorem_prover.util.find_variables_in_terms import find_variables_in_terms
@@ -16,6 +17,7 @@ class Proof:
     goal: CNFDisjunction
     similarity: float
     leaf_proof_step: ProofStep
+    stats: ProofStats
 
     @property
     def depth(self) -> int:
