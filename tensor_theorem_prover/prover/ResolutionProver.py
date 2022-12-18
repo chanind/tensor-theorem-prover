@@ -27,6 +27,7 @@ class ResolutionProver:
     skolemizer: Skolemizer
     similarity_cache: SimilarityCache
     cache_similarity: bool
+    skip_seen_resolvents: bool
 
     def __init__(
         self,
@@ -36,6 +37,7 @@ class ResolutionProver:
         similarity_func: Optional[SimilarityFunc] = cosine_similarity,
         min_similarity_threshold: float = 0.5,
         cache_similarity: bool = True,
+        skip_seen_resolvents: bool = False,
     ) -> None:
         self.max_proof_depth = max_proof_depth
         self.max_resolvent_width = max_resolvent_width
@@ -43,6 +45,7 @@ class ResolutionProver:
         self.skolemizer = Skolemizer()
         self.similarity_cache = {}
         self.cache_similarity = cache_similarity
+        self.skip_seen_resolvents = skip_seen_resolvents
         self.similarity_func = similarity_func
         self.base_knowledge = []
         if knowledge is not None:
@@ -62,8 +65,10 @@ class ResolutionProver:
     def prove(
         self, goal: Clause, extra_knowledge: Optional[Iterable[Clause]] = None
     ) -> Optional[Proof]:
-        """Find the best proof for the given goal"""
-        proofs = self.prove_all(goal, extra_knowledge, max_proofs=1)
+        """Find the proof for the given goal with highest similarity score"""
+        proofs = self.prove_all(
+            goal, extra_knowledge, max_proofs=1, skip_seen_resolvents=True
+        )
         if proofs:
             return proofs[0]
         return None
@@ -73,10 +78,14 @@ class ResolutionProver:
         goal: Clause,
         extra_knowledge: Optional[Iterable[Clause]] = None,
         max_proofs: Optional[int] = None,
+        skip_seen_resolvents: Optional[bool] = None,
     ) -> list[Proof]:
         """Find all possible proofs for the given goal, sorted by similarity score"""
         proofs, _ = self.prove_all_with_stats(
-            goal, extra_knowledge, max_proofs=max_proofs
+            goal,
+            extra_knowledge,
+            max_proofs=max_proofs,
+            skip_seen_resolvents=skip_seen_resolvents,
         )
         return proofs
 
@@ -85,6 +94,7 @@ class ResolutionProver:
         goal: Clause,
         extra_knowledge: Optional[Iterable[Clause]] = None,
         max_proofs: Optional[int] = None,
+        skip_seen_resolvents: Optional[bool] = None,
     ) -> tuple[list[Proof], ProofStats]:
         """
         Find all possible proofs for the given goal, sorted by similarity score.
@@ -94,9 +104,13 @@ class ResolutionProver:
         parsed_extra_knowledge = self._parse_knowledge(extra_knowledge or [])
         proofs = []
         knowledge = self.base_knowledge + parsed_extra_knowledge + inverted_goals
+        # knowledge.sort(key=lambda clause: len(clause.literals), reverse=True)
         ctx = ProofContext(
             initial_min_similarity_threshold=self.min_similarity_threshold,
             max_proofs=max_proofs,
+            skip_seen_resolvents=self.skip_seen_resolvents
+            if skip_seen_resolvents is None
+            else skip_seen_resolvents,
         )
         similarity_func = self.similarity_func
         if self.cache_similarity and self.similarity_func:
@@ -112,14 +126,13 @@ class ResolutionProver:
                 ctx,
             )
             for (
-                similarity,
                 leaf_proof_step,
                 leaf_proof_stats,
-            ) in ctx.scored_proof_steps:
+            ) in ctx.leaf_proof_steps_with_stats():
                 proofs.append(
                     Proof(
                         inverted_goal,
-                        similarity,
+                        leaf_proof_step.running_similarity,
                         leaf_proof_step,
                         leaf_proof_stats,
                     )
@@ -147,13 +160,8 @@ class ResolutionProver:
         depth: int = 0,
         parent_state: Optional[ProofStep] = None,
     ) -> None:
-        if parent_state:
-            if depth >= self.max_proof_depth:
-                return
-            # the similarity moving forward can never exceed the running similarity of the parent node,
-            # so if we've already seen a proof that's better than the parent, we can just stop here
-            if parent_state.running_similarity <= ctx.min_similarity_threshold:
-                return
+        if parent_state and depth >= self.max_proof_depth:
+            return
         if depth >= ctx.stats.max_depth_seen:
             # add 1 to match the depth stat seen in proofs. It's strange if the proof has depth 12, but max_depth_seen is 11
             ctx.stats.max_depth_seen = depth + 1
@@ -167,29 +175,36 @@ class ResolutionProver:
             ):
                 continue
             ctx.stats.attempted_resolutions += 1
-            next_states = resolve(
+            next_steps = resolve(
                 goal,
                 clause,
                 similarity_func=similarity_func,
                 parent=parent_state,
                 ctx=ctx,
             )
-            if len(next_states) > 0:
+            if len(next_steps) > 0:
                 ctx.stats.successful_resolutions += 1
-            for next_state in next_states:
-                if next_state.resolvent is None:
+            for next_step in next_steps:
+                if next_step.resolvent is None:
                     raise ValueError("Resolvent was unexpectedly not present")
-                if len(next_state.resolvent.literals) == 0:
-                    ctx.record_leaf_proof(next_state)
+                if next_step.resolvent.is_empty():
+                    ctx.record_leaf_proof(next_step)
                 else:
-                    resolvent_width = len(next_state.resolvent.literals)
+                    # the similarity moving forward can never exceed the running similarity of the parent node,
+                    # so if we've already seen a proof that's better than this step, we can just stop here
+                    # NOTE: we might not find the shortest proof, may want to revisit this in the future
+                    if next_step.running_similarity <= ctx.min_similarity_threshold:
+                        continue
+                    if not ctx.check_resolvent(next_step):
+                        continue
+                    resolvent_width = len(next_step.resolvent.literals)
                     if resolvent_width >= ctx.stats.max_resolvent_width_seen:
                         ctx.stats.max_resolvent_width_seen = resolvent_width
                     self._prove_all_recursive(
-                        next_state.resolvent,
+                        next_step.resolvent,
                         knowledge,
                         similarity_func,
                         ctx,
                         depth + 1,
-                        next_state,
+                        next_step,
                     )

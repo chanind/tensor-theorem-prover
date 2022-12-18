@@ -26,6 +26,7 @@ class ProofStep:
     similarity: float
     # this refers to the overall similarity of this step and all of its parents
     running_similarity: float
+    depth: int
     parent: Optional[ProofStep] = None
 
     def __str__(self) -> str:

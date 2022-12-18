@@ -113,12 +113,12 @@ def test_build_resolvent() -> None:
         source_literal,
         CNFLiteral(pred1(Y, const1), True),
     ]
-    source_disjunction = CNFDisjunction(source_literals)
+    source_disjunction = CNFDisjunction.from_literals_list(source_literals)
     target_literals = [
         target_literal,
         CNFLiteral(pred2(const2, X), False),
     ]
-    target_disjunction = CNFDisjunction(target_literals)
+    target_disjunction = CNFDisjunction.from_literals_list(target_literals)
     unification = Unification(
         similarity=1.0,
         source_substitutions={Y: const1},
@@ -136,7 +136,7 @@ def test_build_resolvent() -> None:
         CNFLiteral(pred1(const1, const1), True),
         CNFLiteral(pred2(const2, const2), False),
     ]
-    assert resolvent == CNFDisjunction(expected_literals)
+    assert resolvent == CNFDisjunction.from_literals_list(expected_literals)
 
 
 def test_build_resolvent_with_similar_predicates_with_embeddings() -> None:
@@ -150,12 +150,12 @@ def test_build_resolvent_with_similar_predicates_with_embeddings() -> None:
         source_literal,
         CNFLiteral(p1_same_name(Y, const1), True),
     ]
-    source_disjunction = CNFDisjunction(source_literals)
+    source_disjunction = CNFDisjunction.from_literals_list(source_literals)
     target_literals = [
         target_literal,
         CNFLiteral(pred2(const2, X), False),
     ]
-    target_disjunction = CNFDisjunction(target_literals)
+    target_disjunction = CNFDisjunction.from_literals_list(target_literals)
     unification = Unification(
         similarity=1.0,
         source_substitutions={Y: const1},
@@ -173,4 +173,4 @@ def test_build_resolvent_with_similar_predicates_with_embeddings() -> None:
         CNFLiteral(p1_same_name(const1, const1), True),
         CNFLiteral(pred2(const2, const2), False),
     ]
-    assert resolvent == CNFDisjunction(expected_literals)
+    assert resolvent == CNFDisjunction.from_literals_list(expected_literals)

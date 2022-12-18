@@ -48,5 +48,12 @@ def test_performance() -> None:
         similarity_func=max_similarity(
             [cosine_similarity, symbol_compare, partial_symbol_compare]
         ),
+        max_proof_depth=13,
+        max_resolvent_width=6,
+        min_similarity_threshold=0.7,
+        skip_seen_resolvents=True,
     )
-    prover.prove(query)
+    proof, stats = prover.prove_all_with_stats(query, max_proofs=1)
+    print(proof[0])
+    print(stats)
+    assert proof[0].similarity == pytest.approx(0.9049135)

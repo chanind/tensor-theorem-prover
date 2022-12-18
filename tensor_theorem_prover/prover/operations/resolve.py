@@ -1,6 +1,6 @@
 from __future__ import annotations
 import re
-from typing import Optional
+from typing import Optional, cast
 
 from tensor_theorem_prover.normalize.to_cnf import CNFDisjunction, CNFLiteral
 from tensor_theorem_prover.prover.ProofContext import ProofContext
@@ -29,7 +29,7 @@ def resolve(
         A list of proof states corresponding to each possible resolution.
     """
     next_steps = []
-    source_literal = source.literals[0]
+    source_literal = cast(CNFLiteral, source.head)
     for target_literal in target.literals:
         # we can only resolve literals with the opposite polarity
         if source_literal.polarity == target_literal.polarity:
@@ -63,6 +63,7 @@ def resolve(
                 if parent
                 else unification.similarity,
                 parent=parent,
+                depth=parent.depth + 1 if parent else 0,
             )
             next_steps.append(step)
     return next_steps
@@ -114,7 +115,10 @@ def _build_resolvent(
         target_literals, unification.target_substitutions
     )
     resolvent_literals = updated_source_literals + updated_target_literals
-    resolvent = CNFDisjunction(resolvent_literals)
+    if len(resolvent_literals) == 0:
+        resolvent = CNFDisjunction.empty()
+    else:
+        resolvent = CNFDisjunction.from_literals_list(resolvent_literals)
     return resolvent
 
 

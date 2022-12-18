@@ -15,3 +15,5 @@ class ProofStats:
     max_resolvent_width_seen: int = 0
     max_depth_seen: int = 0
     discarded_proofs: int = 0
+    resolvent_checks: int = 0
+    resolvent_check_hits: int = 0
