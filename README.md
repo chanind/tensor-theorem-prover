@@ -193,7 +193,7 @@ prover = ResolutionProver(knowledge=knowledge, skip_seen_resolvents=True)
 
 ## Acknowledgements
 
-This library borrows code and ideas from the earier library [fuzzy-reasoner](https://github.com/fuzzy-reasoner/fuzzy-reasoner). The main difference between these libraries is that tensor-theorem-prover supports full first-order logic using Resolution, whereas fuzzy-reasoner is restricting to Horn clauses and uses backwards chaining.
+This library borrows code and ideas from the earier library [fuzzy-reasoner](https://github.com/fuzzy-reasoner/fuzzy-reasoner). The main difference between these libraries is that tensor-theorem-prover supports full first-order logic using Resolution, whereas fuzzy-reasoner is restricted to Horn clauses and uses backwards chaining.
 
 Like fuzzy-reasoner, this library also takes inspiration from the following papers for the idea of using vector similarity in theorem proving:
 
