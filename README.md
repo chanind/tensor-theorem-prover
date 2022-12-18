@@ -1,6 +1,6 @@
 # Tensor Theorem Prover
 
-[![ci](https://img.shields.io/github/workflow/status/chanind/tensor-theorem-prover/CI/main)](https://github.com/chanind/tensor-theorem-prover)
+[![ci](https://img.shields.io/github/actions/workflow/status/chanind/tensor-theorem-prover/ci.yaml?branch=main)](https://github.com/chanind/tensor-theorem-prover)
 [![Codecov](https://img.shields.io/codecov/c/github/chanind/tensor-theorem-prover/main)](https://codecov.io/gh/chanind/tensor-theorem-prover)
 [![PyPI](https://img.shields.io/pypi/v/tensor-theorem-prover?color=blue)](https://pypi.org/project/tensor-theorem-prover/)
 
