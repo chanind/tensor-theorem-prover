@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.11.0 (2022-12-18)
+### Feature
+* Dedupe disjunctions and add option to prune search tree ([#2](https://github.com/chanind/tensor-theorem-prover/issues/2)) ([`b0576b5`](https://github.com/chanind/tensor-theorem-prover/commit/b0576b5a229181ec4ef6eddec002b243418b7731))
+
 ## v0.10.2 (2022-12-13)
 ### Fix
 * More perf improvements around early stopping ([`948d896`](https://github.com/chanind/tensor-theorem-prover/commit/948d896e02d49d66c2330a6097f6f21f006245ed))
