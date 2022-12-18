@@ -23,13 +23,28 @@ class CNFLiteral:
 
 @dataclass(frozen=True)
 class CNFDisjunction:
-    literals: list[CNFLiteral]
+    literals: frozenset[CNFLiteral]
+
+    # This is just here so we don't need to do a hack to get a single literal out of the literals set
+    # this should always be one of the literals in self.literals
+    head: CNFLiteral | None
 
     def __str__(self) -> str:
         inner_disjunction = " ∨ ".join(
             sorted(str(literal) for literal in self.literals)
         )
         return f"[{inner_disjunction}]"
+
+    @classmethod
+    def from_literals_list(cls, literals: list[CNFLiteral]) -> CNFDisjunction:
+        return CNFDisjunction(frozenset(literals), literals[0])
+
+    @classmethod
+    def empty(cls) -> CNFDisjunction:
+        return CNFDisjunction(frozenset(), None)
+
+    def is_empty(self) -> bool:
+        return self.head is None
 
 
 def to_cnf(clause: Clause, skolemizer: Skolemizer) -> list[CNFDisjunction]:
@@ -50,7 +65,7 @@ def to_cnf(clause: Clause, skolemizer: Skolemizer) -> list[CNFDisjunction]:
 def _norm_clause_to_cnf(clause: SimplifiedClause) -> list[CNFDisjunction]:
     if isinstance(clause, Atom) or isinstance(clause, Not):
         literal = _element_to_cnf_literal(clause)
-        return [CNFDisjunction([literal])]
+        return [CNFDisjunction(frozenset({literal}), literal)]
     if isinstance(clause, And):
         disjunctions = []
         for term in clause.args:
@@ -61,7 +76,7 @@ def _norm_clause_to_cnf(clause: SimplifiedClause) -> list[CNFDisjunction]:
                 for element in term.args:
                     assert isinstance(element, Atom) or isinstance(element, Not)
                     literals.append(_element_to_cnf_literal(element))
-            disjunctions.append(CNFDisjunction(literals))
+            disjunctions.append(CNFDisjunction.from_literals_list(literals))
         return disjunctions
     raise ValueError(f"Unnormalized clause type in CNF conversion: {type(clause)}")
 
@@ -73,3 +88,12 @@ def _element_to_cnf_literal(element: Atom | Not) -> CNFLiteral:
         assert isinstance(element.body, Atom)
         return CNFLiteral(element.body, False)
     raise ValueError(f"Unexpected element type: {type(element)}")
+
+
+def _sort_disj_literals_comparator(literal: CNFLiteral) -> int:
+    # for some reason putting longer literals first seems to be faster
+    return len(literal.atom.terms)
+
+
+def _sort_disj_literals(listerals: list[CNFLiteral]) -> list[CNFLiteral]:
+    return sorted(listerals, key=_sort_disj_literals_comparator, reverse=True)

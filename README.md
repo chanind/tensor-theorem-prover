@@ -181,6 +181,16 @@ By default, the ResolutionProver has no limit on how wide resolvents can get dur
 prover = ResolutionProver(knowledge=knowledge, max_resolvent_width=10)
 ```
 
+### Skipping seen resolvents
+
+A major performance improvement when searching through a large proof space is to stop searching any branches that encounter a resolvent that's already been seen. Doing this is still guaranteed to find the proof with the highest similarity score, but it means the prover is no longer guaranteed to find every possible proof when running `prover.prove_all()`. Although, when dealing with anything beyond very small knowledge bases, finding every possible proof is likely not going to be computationally feasible anyway.
+
+Searching for a proof using `prover.prove()` always enables this optimization, but you can enable it when using `prover.prove_all()` as well by passing the option `skip_seen_resolvents=True` when creating the `ResolutionProver`, like below:
+
+```python
+prover = ResolutionProver(knowledge=knowledge, skip_seen_resolvents=True)
+```
+
 ## Acknowledgements
 
 This library borrows code and ideas from the earier library [fuzzy-reasoner](https://github.com/fuzzy-reasoner/fuzzy-reasoner). The main difference between these libraries is that tensor-theorem-prover supports full first-order logic using Resolution, whereas fuzzy-reasoner is restricting to Horn clauses and uses backwards chaining.

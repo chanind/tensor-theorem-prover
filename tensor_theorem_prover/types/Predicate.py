@@ -17,6 +17,9 @@ class Predicate:
     symbol: str
     embedding: Optional[Any] = None
 
+    def __hash__(self) -> int:
+        return hash(self.symbol) + id(self.embedding)
+
     # shorthand for creating an Atom out of this predicate and terms
     def __call__(self, *terms: Constant | Variable | BoundFunction) -> Atom:
         # need to import inside of here to avoid circular references

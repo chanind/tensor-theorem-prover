@@ -32,7 +32,8 @@ def test_basic_proof() -> None:
     goal = father_of(homer, X)
     proof = prover.prove(goal)
 
-    EXPECTED_PROOF_STR = """\
+    EXPECTED_PROOF_STRS = [
+        """\
     Goal: [¬father_of(homer,X)]
     Subsitutions: {X -> bart}
     Similarity: 1.0
@@ -58,5 +59,35 @@ def test_basic_proof() -> None:
       Unify: is_male(homer) = is_male(homer)
       Subsitutions: {}, {}
       Resolvent: []
-    """
-    assert str(proof) == dedent(EXPECTED_PROOF_STR).strip()
+    """,
+        """\
+    Goal: [¬father_of(homer,X)]
+    Subsitutions: {X -> bart}
+    Similarity: 1.0
+    Depth: 3
+    Steps:
+      Similarity: 1.0
+      Source: [¬father_of(homer,X)]
+      Target: [father_of(X,Y) ∨ ¬is_male(X) ∨ ¬parent_of(X,Y)]
+      Unify: father_of(homer,X) = father_of(X,Y)
+      Subsitutions: {}, {X -> homer, Y -> X}
+      Resolvent: [¬is_male(homer) ∨ ¬parent_of(homer,X)]
+      ---
+      Similarity: 1.0
+      Source: [¬is_male(homer) ∨ ¬parent_of(homer,X)]
+      Target: [is_male(homer)]
+      Unify: is_male(homer) = is_male(homer)
+      Subsitutions: {}, {}
+      Resolvent: [¬parent_of(homer,X)]
+      ---
+      Similarity: 1.0
+      Source: [¬parent_of(homer,X)]
+      Target: [parent_of(homer,bart)]
+      Unify: parent_of(homer,X) = parent_of(homer,bart)
+      Subsitutions: {X -> bart}, {}
+      Resolvent: []
+    """,
+    ]
+    assert str(proof) in [
+        dedent(proof_str).strip() for proof_str in EXPECTED_PROOF_STRS
+    ]
