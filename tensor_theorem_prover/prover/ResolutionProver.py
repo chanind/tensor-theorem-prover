@@ -18,7 +18,7 @@ from tensor_theorem_prover.types import Clause, Not
 
 
 class ResolutionProver:
-    base_knowledge: list[CNFDisjunction]
+    base_knowledge: set[CNFDisjunction]
     max_proof_depth: int
     max_resolvent_width: Optional[int]
     min_similarity_threshold: float
@@ -47,19 +47,19 @@ class ResolutionProver:
         self.cache_similarity = cache_similarity
         self.skip_seen_resolvents = skip_seen_resolvents
         self.similarity_func = similarity_func
-        self.base_knowledge = []
+        self.base_knowledge = set()
         if knowledge is not None:
             self.extend_knowledge(knowledge)
 
     def extend_knowledge(self, knowledge: Iterable[Clause]) -> None:
         """Add more knowledge to the prover"""
-        self.base_knowledge.extend(self._parse_knowledge(knowledge))
+        self.base_knowledge.update(self._parse_knowledge(knowledge))
 
-    def _parse_knowledge(self, knowledge: Iterable[Clause]) -> list[CNFDisjunction]:
+    def _parse_knowledge(self, knowledge: Iterable[Clause]) -> set[CNFDisjunction]:
         """Parse the knowledge into CNF form"""
-        parsed_knowledge = []
+        parsed_knowledge = set()
         for clause in knowledge:
-            parsed_knowledge.extend(to_cnf(clause, self.skolemizer))
+            parsed_knowledge.update(to_cnf(clause, self.skolemizer))
         return parsed_knowledge
 
     def prove(
@@ -100,10 +100,10 @@ class ResolutionProver:
         Find all possible proofs for the given goal, sorted by similarity score.
         Return the proofs and the stats for the proof search.
         """
-        inverted_goals = to_cnf(Not(goal), self.skolemizer)
+        inverted_goals = set(to_cnf(Not(goal), self.skolemizer))
         parsed_extra_knowledge = self._parse_knowledge(extra_knowledge or [])
         proofs = []
-        knowledge = self.base_knowledge + parsed_extra_knowledge + inverted_goals
+        knowledge = self.base_knowledge | parsed_extra_knowledge | inverted_goals
         # knowledge.sort(key=lambda clause: len(clause.literals), reverse=True)
         ctx = ProofContext(
             initial_min_similarity_threshold=self.min_similarity_threshold,
@@ -148,7 +148,7 @@ class ResolutionProver:
 
     def reset(self) -> None:
         """Clear all knowledge from the prover and wipe the similarity cache"""
-        self.base_knowledge = []
+        self.base_knowledge = set()
         self.purge_similarity_cache()
 
     def _prove_all_recursive(

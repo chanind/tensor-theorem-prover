@@ -174,7 +174,6 @@ def test_solve_proof_beyond_horn_clauses() -> None:
 
     assert proof is not None
     assert proof.similarity == 1.0
-    assert proof.substitutions == {X: x}
     assert proof.depth >= 10
 
 
@@ -325,4 +324,4 @@ def test_reset() -> None:
     prover.similarity_cache = {(1, 2): 0.5}
     prover.reset()
     assert prover.similarity_cache == {}
-    assert prover.base_knowledge == []
+    assert prover.base_knowledge == set()
