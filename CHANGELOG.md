@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.11.1 (2022-12-22)
+### Fix
+* Dedupe knowledge in ResolutionProver ([`b16c899`](https://github.com/chanind/tensor-theorem-prover/commit/b16c89974669b92b24468ad76110d99e3c5e1403))
+
 ## v0.11.0 (2022-12-18)
 ### Feature
 * Dedupe disjunctions and add option to prune search tree ([#2](https://github.com/chanind/tensor-theorem-prover/issues/2)) ([`b0576b5`](https://github.com/chanind/tensor-theorem-prover/commit/b0576b5a229181ec4ef6eddec002b243418b7731))
