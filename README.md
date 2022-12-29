@@ -3,8 +3,11 @@
 [![ci](https://img.shields.io/github/actions/workflow/status/chanind/tensor-theorem-prover/ci.yaml?branch=main)](https://github.com/chanind/tensor-theorem-prover)
 [![Codecov](https://img.shields.io/codecov/c/github/chanind/tensor-theorem-prover/main)](https://codecov.io/gh/chanind/tensor-theorem-prover)
 [![PyPI](https://img.shields.io/pypi/v/tensor-theorem-prover?color=blue)](https://pypi.org/project/tensor-theorem-prover/)
+[![Documentation Status](https://readthedocs.org/projects/tensor-theorem-prover/badge/?version=latest)](https://tensor-theorem-prover.readthedocs.io/en/latest/?badge=latest)
 
 First-order logic theorem prover supporting unification with approximate vector similarity
+
+Full docs: https://tensor-theorem-prover.readthedocs.io
 
 ## Installation
 
