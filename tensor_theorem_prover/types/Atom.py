@@ -12,6 +12,10 @@ Term = Union[Constant, Variable, BoundFunction]
 
 @dataclass(frozen=True)
 class Atom:
+    """
+    Logical Atom (predicate with terms)
+    """
+
     predicate: Predicate
     terms: tuple[Term, ...]
 

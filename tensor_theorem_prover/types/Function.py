@@ -7,6 +7,10 @@ from .Variable import Variable
 
 @dataclass(frozen=True)
 class Function:
+    """
+    A function symbol in a logical formula.
+    """
+
     symbol: str
 
     # shorthand for creating an Atom out of this predicate and terms

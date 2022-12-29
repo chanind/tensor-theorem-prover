@@ -16,6 +16,8 @@ def subsitutions_to_str(substitutions: SubstitutionsMap) -> str:
 
 @dataclass
 class ProofStep:
+    """A single step in a proof of a goal"""
+
     source: CNFDisjunction
     target: CNFDisjunction
     source_unification_literal: CNFLiteral

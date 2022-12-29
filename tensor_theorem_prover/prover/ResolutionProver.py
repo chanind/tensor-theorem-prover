@@ -18,6 +18,10 @@ from tensor_theorem_prover.types import Clause, Not
 
 
 class ResolutionProver:
+    """
+    Core theorem prover class that uses input resolution to prove a goal
+    """
+
     base_knowledge: set[CNFDisjunction]
     max_proof_depth: int
     max_resolvent_width: Optional[int]

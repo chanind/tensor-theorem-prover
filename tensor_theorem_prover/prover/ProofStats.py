@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 @dataclass
 class ProofStats:
-    """Stats on how complex a proof was to complete"""
+    """Stats on how complex a proof was to compute"""
 
     attempted_unifications: int = 0
     successful_unifications: int = 0

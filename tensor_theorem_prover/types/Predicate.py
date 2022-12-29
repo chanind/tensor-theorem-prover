@@ -14,6 +14,11 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class Predicate:
+    """
+    A predicate symbol in a logical formula.
+    Can contain an embedding for use in vector similarity calculations.
+    """
+
     symbol: str
     embedding: Optional[Any] = None
 
