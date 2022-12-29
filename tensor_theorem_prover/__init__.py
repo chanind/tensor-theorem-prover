@@ -1,6 +1,6 @@
 __version__ = "0.11.1"
 
-from .prover import ResolutionProver, Proof, ProofStep
+from .prover import ResolutionProver, Proof, ProofStep, ProofStats
 
 from .types import (
     Atom,
@@ -44,4 +44,5 @@ __all__ = (
     "SimilarityFunc",
     "Proof",
     "ProofStep",
+    "ProofStats",
 )

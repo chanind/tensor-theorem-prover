@@ -8,6 +8,8 @@ from tensor_theorem_prover.types.Variable import Variable
 
 @dataclass
 class And:
+    """Logical Conjunction"""
+
     args: tuple["Clause", ...]
 
     def __init__(self, *args: "Clause") -> None:
@@ -32,6 +34,8 @@ class And:
 
 @dataclass
 class Or:
+    """Logical Disjunction"""
+
     args: tuple["Clause", ...]
 
     def __init__(self, *args: "Clause") -> None:
@@ -56,6 +60,8 @@ class Or:
 
 @dataclass
 class Not:
+    """Logical Negation"""
+
     body: "Clause"
 
     def __str__(self) -> str:
@@ -66,6 +72,8 @@ class Not:
 
 @dataclass
 class Implies:
+    """Logical Implication"""
+
     antecedent: "Clause"
     consequent: "Clause"
 
@@ -81,6 +89,8 @@ class Implies:
 
 @dataclass
 class Exists:
+    """Logical Existential Quantifier"""
+
     variable: Variable
     body: "Clause"
 
@@ -90,6 +100,8 @@ class Exists:
 
 @dataclass
 class All:
+    """Logical Universal Quantifier"""
+
     variable: Variable
     body: "Clause"
 

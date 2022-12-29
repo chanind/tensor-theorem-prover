@@ -4,6 +4,11 @@ from typing import Optional, Any
 
 @dataclass(frozen=True)
 class Constant:
+    """
+    A constant symbol in a logical formula.
+    Can contain an embedding for use in vector similarity calculations.
+    """
+
     symbol: str
     embedding: Optional[Any] = None
 

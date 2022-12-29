@@ -14,6 +14,10 @@ from .ProofStep import ProofStep, SubstitutionsMap
 
 @dataclass(frozen=True, eq=True)
 class Proof:
+    """
+    Respresentation of a successful proof of a goal
+    """
+
     goal: CNFDisjunction
     similarity: float
     leaf_proof_step: ProofStep

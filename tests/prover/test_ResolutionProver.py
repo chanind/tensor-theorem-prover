@@ -264,12 +264,12 @@ def test_prove_all_with_multiple_valid_proof_paths_and_embedding_similarities() 
         assert proof.substitutions == {X: abe}
 
     # make sure that stats look sane
-    assert proofs[0].stats.successful_unifications < stats.successful_unifications
-    assert proofs[0].stats.attempted_unifications < stats.attempted_unifications
-    assert proofs[0].stats.attempted_resolutions < stats.attempted_resolutions
-    assert proofs[0].stats.successful_resolutions < stats.successful_resolutions
-    assert proofs[0].stats.similarity_comparisons < stats.similarity_comparisons
-    assert proofs[0].stats.similarity_cache_hits < stats.similarity_cache_hits
+    assert proofs[0].stats.successful_unifications <= stats.successful_unifications
+    assert proofs[0].stats.attempted_unifications <= stats.attempted_unifications
+    assert proofs[0].stats.attempted_resolutions <= stats.attempted_resolutions
+    assert proofs[0].stats.successful_resolutions <= stats.successful_resolutions
+    assert proofs[0].stats.similarity_comparisons <= stats.similarity_comparisons
+    assert proofs[0].stats.similarity_cache_hits <= stats.similarity_cache_hits
 
     assert stats.attempted_resolutions > 0
     assert stats.attempted_unifications > 0
