@@ -56,7 +56,7 @@ def _not_to_nnf(clause: Not) -> NNFClause:
         return Exists(clause.body.variable, _not_to_nnf(Not(clause.body.body)))
     if isinstance(clause.body, Atom):
         return clause
-    raise ValueError(f"Unknown clause type: {type(clause)}")
+    raise ValueError(f"Unknown clause type: {type(clause.body)}")
 
 
 def _implies_to_nnf(clause: Implies) -> NNFClause:

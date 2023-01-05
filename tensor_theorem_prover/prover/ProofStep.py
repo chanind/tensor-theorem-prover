@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from functools import total_ordering
 from typing import Dict, Optional
 
 from tensor_theorem_prover.types import Variable, Term
@@ -14,7 +15,8 @@ def subsitutions_to_str(substitutions: SubstitutionsMap) -> str:
     return "{" + inner_str + "}"
 
 
-@dataclass
+@total_ordering
+@dataclass(frozen=True)
 class ProofStep:
     """A single step in a proof of a goal"""
 
@@ -29,6 +31,7 @@ class ProofStep:
     # this refers to the overall similarity of this step and all of its parents
     running_similarity: float
     depth: int
+    priority: float
     parent: Optional[ProofStep] = None
 
     def __str__(self) -> str:
@@ -39,3 +42,12 @@ class ProofStep:
         output += f"Subsitutions: {subsitutions_to_str(self.source_substitutions)}, {subsitutions_to_str(self.target_substitutions)}\n"
         output += f"Resolvent: {self.resolvent}"
         return output
+
+    def __lt__(self, other: ProofStep) -> bool:
+        return self.priority < other.priority
+
+    def __eq__(self, other: object) -> bool:
+        # to keep mypy happy...
+        if not isinstance(other, ProofStep):
+            return NotImplemented
+        return self.priority == other.priority

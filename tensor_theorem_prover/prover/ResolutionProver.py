@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from typing import Iterable, Optional
+from queue import PriorityQueue
 
 from tensor_theorem_prover.normalize import (
     Skolemizer,
     CNFDisjunction,
     to_cnf,
-    reverse_polarity_score,
 )
 from tensor_theorem_prover.prover.Proof import Proof
 from tensor_theorem_prover.prover.ProofStats import ProofStats
@@ -134,18 +134,28 @@ class ResolutionProver:
                 similarity_func,
                 ctx,
             )
-            for (
-                leaf_proof_step,
-                leaf_proof_stats,
-            ) in ctx.leaf_proof_steps_with_stats():
-                proofs.append(
-                    Proof(
-                        inverted_goal,
-                        leaf_proof_step.running_similarity,
-                        leaf_proof_step,
-                        leaf_proof_stats,
-                    )
+        while not ctx.steps_queue.empty():
+            step = ctx.steps_queue.get()
+            self._prove_all_recursive(
+                step.resolvent,
+                knowledge,
+                similarity_func,
+                ctx,
+                step,
+            )
+
+        for (
+            leaf_proof_step,
+            leaf_proof_stats,
+        ) in ctx.leaf_proof_steps_with_stats():
+            proofs.append(
+                Proof(
+                    inverted_goal,
+                    leaf_proof_step.running_similarity,
+                    leaf_proof_step,
+                    leaf_proof_stats,
                 )
+            )
 
         return (
             sorted(proofs, key=lambda proof: proof.similarity, reverse=True),
@@ -166,19 +176,15 @@ class ResolutionProver:
         knowledge: Iterable[CNFDisjunction],
         similarity_func: Optional[SimilarityFunc],
         ctx: ProofContext,
-        depth: int = 0,
         parent_state: Optional[ProofStep] = None,
     ) -> None:
+        depth = parent_state.depth if parent_state else 0
         if parent_state and depth >= self.max_proof_depth:
             return
         if depth >= ctx.stats.max_depth_seen:
             # add 1 to match the depth stat seen in proofs. It's strange if the proof has depth 12, but max_depth_seen is 11
             ctx.stats.max_depth_seen = depth + 1
-        for clause in sorted(
-            knowledge,
-            key=lambda clause: reverse_polarity_score(clause, goal),
-            reverse=True,
-        ):
+        for clause in knowledge:
             # resolution always ends up removing a literal from the clause and the goal, and combining the remaining literals
             # so we know what the length of the resolvent will be before we even try to resolve
             if (
@@ -213,11 +219,4 @@ class ResolutionProver:
                     resolvent_width = len(next_step.resolvent.literals)
                     if resolvent_width >= ctx.stats.max_resolvent_width_seen:
                         ctx.stats.max_resolvent_width_seen = resolvent_width
-                    self._prove_all_recursive(
-                        next_step.resolvent,
-                        knowledge,
-                        similarity_func,
-                        ctx,
-                        depth + 1,
-                        next_step,
-                    )
+                    ctx.steps_queue.put(next_step)

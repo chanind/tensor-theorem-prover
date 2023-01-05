@@ -64,6 +64,8 @@ def resolve(
                 else unification.similarity,
                 parent=parent,
                 depth=parent.depth + 1 if parent else 0,
+                # use min resolvent width as priority, may want to make this configurable in the future
+                priority=len(resolvent.literals),
             )
             next_steps.append(step)
     return next_steps

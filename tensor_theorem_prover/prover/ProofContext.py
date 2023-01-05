@@ -1,5 +1,6 @@
 from __future__ import annotations
 from copy import copy
+from queue import PriorityQueue
 from typing import Optional
 
 from tensor_theorem_prover.prover.ProofStats import ProofStats
@@ -16,6 +17,7 @@ class ProofContext:
     stats: ProofStats
     seen_resolvents_hash: dict[int, tuple[int, float]]
     skip_seen_resolvents: bool
+    steps_queue: PriorityQueue[ProofStep]
 
     def __init__(
         self,
@@ -29,6 +31,7 @@ class ProofContext:
         self.scored_proof_steps = []
         self.seen_resolvents_hash = {}
         self.skip_seen_resolvents = skip_seen_resolvents
+        self.steps_queue = PriorityQueue()
 
     def record_leaf_proof(self, proof_step: ProofStep) -> None:
         """Add a leaf proof step to the accumulator"""
