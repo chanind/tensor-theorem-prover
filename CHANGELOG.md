@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.11.3 (2023-01-05)
+### Fix
+* Revert knowledge sort as it seems to hurt performance, and adding more perf tests ([`db51214`](https://github.com/chanind/tensor-theorem-prover/commit/db512140e6e1ab49e3031cb9758f788fdf5db89a))
+
 ## v0.11.2 (2023-01-03)
 ### Fix
 * Slighly more consistent proving by sorting knowledge in advance ([`5bead37`](https://github.com/chanind/tensor-theorem-prover/commit/5bead37f25f68ad18e1f438f554db4e1eaabd018))
