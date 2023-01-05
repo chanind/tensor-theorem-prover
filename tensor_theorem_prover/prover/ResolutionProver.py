@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Iterable, Optional
-from queue import PriorityQueue
 
 from tensor_theorem_prover.normalize import (
     Skolemizer,

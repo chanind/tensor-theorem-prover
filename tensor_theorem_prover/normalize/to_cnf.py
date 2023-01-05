@@ -1,6 +1,5 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from functools import lru_cache
 from tensor_theorem_prover.normalize.Skolemizer import Skolemizer
 from tensor_theorem_prover.types import Clause, Atom, Not, And, Or
 
@@ -46,28 +45,6 @@ class CNFDisjunction:
 
     def is_empty(self) -> bool:
         return self.head is None
-
-    @lru_cache(maxsize=None)
-    def polarity_counts(self) -> tuple[int, int]:
-        positive_count = 0
-        negative_count = 0
-        for literal in self.literals:
-            if literal.polarity:
-                positive_count += 1
-            else:
-                negative_count += 1
-        return positive_count, negative_count
-
-
-def reverse_polarity_score(disj1: CNFDisjunction, disj2: CNFDisjunction) -> int:
-    """
-    subtract the positive and negative polairity counts from each other, and return the abs value remaining
-    """
-    polarity_counts1 = disj1.polarity_counts()
-    polarity_counts2 = disj2.polarity_counts()
-    return abs(polarity_counts1[0] - polarity_counts2[1]) + abs(
-        polarity_counts1[1] - polarity_counts2[0]
-    )
 
 
 def to_cnf(clause: Clause, skolemizer: Skolemizer) -> list[CNFDisjunction]:

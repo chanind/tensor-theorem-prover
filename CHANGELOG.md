@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.11.2 (2023-01-03)
+### Fix
+* Slighly more consistent proving by sorting knowledge in advance ([`5bead37`](https://github.com/chanind/tensor-theorem-prover/commit/5bead37f25f68ad18e1f438f554db4e1eaabd018))
+
 ## v0.11.1 (2022-12-22)
 ### Fix
 * Dedupe knowledge in ResolutionProver ([`b16c899`](https://github.com/chanind/tensor-theorem-prover/commit/b16c89974669b92b24468ad76110d99e3c5e1403))
