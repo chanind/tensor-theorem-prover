@@ -6,7 +6,6 @@ from tensor_theorem_prover.normalize import (
     Skolemizer,
     CNFDisjunction,
     to_cnf,
-    reverse_polarity_score,
 )
 from tensor_theorem_prover.prover.Proof import Proof
 from tensor_theorem_prover.prover.ProofStats import ProofStats
@@ -134,18 +133,18 @@ class ResolutionProver:
                 similarity_func,
                 ctx,
             )
-            for (
-                leaf_proof_step,
-                leaf_proof_stats,
-            ) in ctx.leaf_proof_steps_with_stats():
-                proofs.append(
-                    Proof(
-                        inverted_goal,
-                        leaf_proof_step.running_similarity,
-                        leaf_proof_step,
-                        leaf_proof_stats,
-                    )
+        for (
+            leaf_proof_step,
+            leaf_proof_stats,
+        ) in ctx.leaf_proof_steps_with_stats():
+            proofs.append(
+                Proof(
+                    inverted_goal,
+                    leaf_proof_step.running_similarity,
+                    leaf_proof_step,
+                    leaf_proof_stats,
                 )
+            )
 
         return (
             sorted(proofs, key=lambda proof: proof.similarity, reverse=True),
@@ -174,11 +173,7 @@ class ResolutionProver:
         if depth >= ctx.stats.max_depth_seen:
             # add 1 to match the depth stat seen in proofs. It's strange if the proof has depth 12, but max_depth_seen is 11
             ctx.stats.max_depth_seen = depth + 1
-        for clause in sorted(
-            knowledge,
-            key=lambda clause: reverse_polarity_score(clause, goal),
-            reverse=True,
-        ):
+        for clause in knowledge:
             # resolution always ends up removing a literal from the clause and the goal, and combining the remaining literals
             # so we know what the length of the resolvent will be before we even try to resolve
             if (
