@@ -312,6 +312,63 @@ def test_prove_all_can_limit_the_number_of_returned_proofs() -> None:
         assert proof.substitutions == {X: abe}
 
 
+def test_prove_all_can_abort_early_if_best_proof_is_not_needed() -> None:
+    father_of_embed = Predicate("father_of", np.array([0.99, 0.25, 1.17]))
+    dad_of_embed = Predicate("dad_of", np.array([1.0, 0.0, 1.0]))
+
+    grandpa_of_def_embed = Implies(
+        And(father_of_embed(X, Z), father_of_embed(Z, Y)),
+        grandpa_of(X, Y),
+    )
+    knowledge: list[Clause] = [
+        # base facts
+        father_of_embed(homer, bart),
+        dad_of_embed(homer, bart),
+        father_of_embed(abe, homer),
+        dad_of_embed(abe, homer),
+        # theorems
+        grandpa_of_def_embed,
+    ]
+
+    prover = ResolutionProver(knowledge=knowledge, find_highest_similarity_proofs=False)
+
+    goal = grandpa_of(X, bart)
+
+    proofs = prover.prove_all(goal, max_proofs=1)
+    assert len(proofs) == 1
+    for proof in proofs:
+        assert proof.similarity <= 1.0
+        assert proof.substitutions == {X: abe}
+
+
+def test_prove_all_can_abort_early_by_setting_max_resolution_attempts() -> None:
+    father_of_embed = Predicate("father_of", np.array([0.99, 0.25, 1.17]))
+    dad_of_embed = Predicate("dad_of", np.array([1.0, 0.0, 1.0]))
+
+    grandpa_of_def_embed = Implies(
+        And(father_of_embed(X, Z), father_of_embed(Z, Y)),
+        grandpa_of(X, Y),
+    )
+    knowledge: list[Clause] = [
+        # base facts
+        father_of_embed(homer, bart),
+        dad_of_embed(homer, bart),
+        father_of_embed(abe, homer),
+        dad_of_embed(abe, homer),
+        # theorems
+        grandpa_of_def_embed,
+    ]
+
+    prover = ResolutionProver(knowledge=knowledge, max_resolution_attempts=2)
+
+    goal = grandpa_of(X, bart)
+
+    proofs, stats = prover.prove_all_with_stats(goal, max_proofs=1)
+    assert len(proofs) == 0
+    # needs a slight buffer, since it doesn't check the abort condition after every resolution
+    assert stats.attempted_resolutions < 25
+
+
 def test_purge_similarity_cache() -> None:
     prover = ResolutionProver(knowledge=[])
     prover.similarity_cache = {(1, 2): 0.5}

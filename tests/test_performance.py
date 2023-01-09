@@ -12,7 +12,6 @@ from tensor_theorem_prover import (
     Predicate,
     max_similarity,
     cosine_similarity,
-    symbol_compare,
 )
 from tensor_theorem_prover.prover import ProofStats
 
@@ -33,8 +32,14 @@ def strip_frame_number(symbol: str) -> str:
 def partial_symbol_compare(
     item1: Constant | Predicate, item2: Constant | Predicate
 ) -> float:
+    if "MERGED" in item1.symbol or "MERGED" in item2.symbol:
+        return 0.0
     if strip_frame_number(item1.symbol) == strip_frame_number(item2.symbol):
         return 0.6
+    if (
+        item1.embedding is None or item2.embedding is None
+    ) and item1.symbol == item2.symbol:
+        return 1.0
     return 0.0
 
 
@@ -47,9 +52,7 @@ def test_performance() -> None:
 
     prover = ResolutionProver(
         knowledge=knowledge,
-        similarity_func=max_similarity(
-            [cosine_similarity, symbol_compare, partial_symbol_compare]
-        ),
+        similarity_func=max_similarity([cosine_similarity, partial_symbol_compare]),
         max_proof_depth=13,
         max_resolvent_width=6,
         min_similarity_threshold=0.7,
@@ -76,9 +79,7 @@ def test_performance_with_amr_reasoner_batch() -> None:
     for sample in batch:
         prover = ResolutionProver(
             knowledge=sample["knowledge"],
-            similarity_func=max_similarity(
-                [cosine_similarity, symbol_compare, partial_symbol_compare]
-            ),
+            similarity_func=max_similarity([cosine_similarity, partial_symbol_compare]),
             max_proof_depth=13,
             max_resolvent_width=8,
             min_similarity_threshold=0.5,

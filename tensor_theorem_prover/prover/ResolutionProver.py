@@ -28,6 +28,7 @@ class ResolutionProver:
 
     base_knowledge: set[CNFDisjunction]
     max_proof_depth: int
+    max_resolution_attempts: Optional[int]
     max_resolvent_width: Optional[int]
     min_similarity_threshold: float
     # MyPy freaks out if this isn't optional, see https://github.com/python/mypy/issues/708
@@ -36,25 +37,30 @@ class ResolutionProver:
     similarity_cache: SimilarityCache
     cache_similarity: bool
     skip_seen_resolvents: bool
+    find_highest_similarity_proofs: bool
 
     def __init__(
         self,
         knowledge: Optional[Iterable[Clause]] = None,
         max_proof_depth: int = 10,
         max_resolvent_width: Optional[int] = None,
+        max_resolution_attempts: Optional[int] = None,
         similarity_func: Optional[SimilarityFunc] = cosine_similarity,
         min_similarity_threshold: float = 0.5,
         cache_similarity: bool = True,
         skip_seen_resolvents: bool = False,
+        find_highest_similarity_proofs: bool = True,
     ) -> None:
         self.max_proof_depth = max_proof_depth
         self.max_resolvent_width = max_resolvent_width
+        self.max_resolution_attempts = max_resolution_attempts
         self.min_similarity_threshold = min_similarity_threshold
         self.skolemizer = Skolemizer()
         self.similarity_cache = {}
         self.cache_similarity = cache_similarity
         self.skip_seen_resolvents = skip_seen_resolvents
         self.similarity_func = similarity_func
+        self.find_highest_similarity_proofs = find_highest_similarity_proofs
         self.base_knowledge = set()
         if knowledge is not None:
             self.extend_knowledge(knowledge)
@@ -169,6 +175,18 @@ class ResolutionProver:
         parent_state: Optional[ProofStep] = None,
     ) -> None:
         if parent_state and depth >= self.max_proof_depth:
+            return
+        if (
+            self.max_resolution_attempts
+            and ctx.stats.attempted_resolutions >= self.max_resolution_attempts
+        ):
+            return
+        # if we don't need to find the best proofs, and we've already found enough, stop
+        if (
+            ctx.max_proofs
+            and not self.find_highest_similarity_proofs
+            and ctx.total_leaf_proofs() >= ctx.max_proofs
+        ):
             return
         if depth >= ctx.stats.max_depth_seen:
             # add 1 to match the depth stat seen in proofs. It's strange if the proof has depth 12, but max_depth_seen is 11
