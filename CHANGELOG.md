@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.12.0 (2023-01-09)
+### Feature
+* Adding options to skip finding best proof, and abort early ([`ed23460`](https://github.com/chanind/tensor-theorem-prover/commit/ed23460995043317ccdce13c3bac66eb0b796a43))
+
 ## v0.11.3 (2023-01-05)
 ### Fix
 * Revert knowledge sort as it seems to hurt performance, and adding more perf tests ([`db51214`](https://github.com/chanind/tensor-theorem-prover/commit/db512140e6e1ab49e3031cb9758f788fdf5db89a))

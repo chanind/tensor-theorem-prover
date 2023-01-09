@@ -1,4 +1,4 @@
-__version__ = "0.11.3"
+__version__ = "0.12.0"
 
 from .prover import ResolutionProver, Proof, ProofStep, ProofStats
 
