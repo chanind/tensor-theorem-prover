@@ -22,10 +22,11 @@ mypy = "^0.982"
 syrupy = "^3.0.2"
 pytest-cov = "^4.0.0"
 pygments = "^2.13.0"
+maturin = "^0.14.10"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["maturin>=0.14,<0.15"]
+build-backend = "maturin"
 
 [tool.semantic_release]
 version_variable = [
@@ -36,3 +37,6 @@ branch = "main"
 upload_to_pypi = true
 upload_to_release = true
 build_command = "pip install poetry && poetry build"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]

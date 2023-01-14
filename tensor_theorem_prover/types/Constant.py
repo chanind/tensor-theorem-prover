@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional, Any
 
+from tensor_theorem_prover._rust import RsConstant
+
 
 @dataclass(frozen=True)
 class Constant:
@@ -17,3 +19,10 @@ class Constant:
 
     def __str__(self) -> str:
         return self.symbol
+
+    def to_rust(self) -> RsConstant:
+        return RsConstant(self.symbol, self.embedding)
+
+    @classmethod
+    def from_rust(cls, rust_constant: RsConstant) -> "Constant":
+        return Constant(rust_constant.symbol, rust_constant.embedding)

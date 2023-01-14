@@ -13,12 +13,12 @@ from tensor_theorem_prover.prover.ProofContext import ProofContext
 from tensor_theorem_prover.prover.operations.resolve import resolve
 from tensor_theorem_prover.prover.ProofStep import ProofStep
 from tensor_theorem_prover.similarity import (
-    SimilarityCache,
     SimilarityFunc,
     cosine_similarity,
-    similarity_with_cache,
 )
 from tensor_theorem_prover.types import Clause, Not
+
+from tensor_theorem_prover._rust import RsCNFDisjunction, RsResolutionProverBackend
 
 
 class ResolutionProver:
@@ -26,18 +26,8 @@ class ResolutionProver:
     Core theorem prover class that uses input resolution to prove a goal
     """
 
-    base_knowledge: set[CNFDisjunction]
-    max_proof_depth: int
-    max_resolution_attempts: Optional[int]
-    max_resolvent_width: Optional[int]
-    min_similarity_threshold: float
-    # MyPy freaks out if this isn't optional, see https://github.com/python/mypy/issues/708
-    similarity_func: Optional[SimilarityFunc]
     skolemizer: Skolemizer
-    similarity_cache: SimilarityCache
-    cache_similarity: bool
-    skip_seen_resolvents: bool
-    find_highest_similarity_proofs: bool
+    backend: RsResolutionProverBackend
 
     def __init__(
         self,
@@ -51,30 +41,31 @@ class ResolutionProver:
         skip_seen_resolvents: bool = False,
         find_highest_similarity_proofs: bool = True,
     ) -> None:
-        self.max_proof_depth = max_proof_depth
-        self.max_resolvent_width = max_resolvent_width
-        self.max_resolution_attempts = max_resolution_attempts
-        self.min_similarity_threshold = min_similarity_threshold
         self.skolemizer = Skolemizer()
-        self.similarity_cache = {}
-        self.cache_similarity = cache_similarity
-        self.skip_seen_resolvents = skip_seen_resolvents
-        self.similarity_func = similarity_func
-        self.find_highest_similarity_proofs = find_highest_similarity_proofs
-        self.base_knowledge = set()
+        self.backend = RsResolutionProverBackend(
+            max_proof_depth,
+            max_resolvent_width,
+            max_resolution_attempts,
+            similarity_func,
+            min_similarity_threshold,
+            cache_similarity,
+            skip_seen_resolvents,
+            find_highest_similarity_proofs,
+            set(),
+        )
         if knowledge is not None:
             self.extend_knowledge(knowledge)
 
     def extend_knowledge(self, knowledge: Iterable[Clause]) -> None:
         """Add more knowledge to the prover"""
-        self.base_knowledge.update(self._parse_knowledge(knowledge))
+        self.backend.extend_knowledge(self._parse_knowledge(knowledge))
 
-    def _parse_knowledge(self, knowledge: Iterable[Clause]) -> set[CNFDisjunction]:
+    def _parse_knowledge(self, knowledge: Iterable[Clause]) -> set[RsCNFDisjunction]:
         """Parse the knowledge into CNF form"""
         parsed_knowledge = set()
         for clause in knowledge:
             parsed_knowledge.update(to_cnf(clause, self.skolemizer))
-        return parsed_knowledge
+        return set(cnf.to_rust() for cnf in parsed_knowledge)
 
     def prove(
         self, goal: Clause, extra_knowledge: Optional[Iterable[Clause]] = None
@@ -114,123 +105,20 @@ class ResolutionProver:
         Find all possible proofs for the given goal, sorted by similarity score.
         Return the proofs and the stats for the proof search.
         """
-        inverted_goals = set(to_cnf(Not(goal), self.skolemizer))
+        inverted_goals = set(
+            cnf.to_rust() for cnf in to_cnf(Not(goal), self.skolemizer)
+        )
         parsed_extra_knowledge = self._parse_knowledge(extra_knowledge or [])
-        proofs = []
-        knowledge = self.base_knowledge | parsed_extra_knowledge | inverted_goals
-        # knowledge.sort(key=lambda clause: len(clause.literals), reverse=True)
-        ctx = ProofContext(
-            initial_min_similarity_threshold=self.min_similarity_threshold,
-            max_proofs=max_proofs,
-            skip_seen_resolvents=self.skip_seen_resolvents
-            if skip_seen_resolvents is None
-            else skip_seen_resolvents,
+        (rust_proofs, rust_stats) = self.backend.prove_all_with_stats(
+            inverted_goals, parsed_extra_knowledge, max_proofs, skip_seen_resolvents
         )
-        similarity_func = self.similarity_func
-        if self.cache_similarity and self.similarity_func:
-            similarity_func = similarity_with_cache(
-                self.similarity_func, self.similarity_cache, ctx.stats
-            )
-
-        for inverted_goal in inverted_goals:
-            self._prove_all_recursive(
-                inverted_goal,
-                knowledge,
-                similarity_func,
-                ctx,
-            )
-        for (
-            leaf_proof_step,
-            leaf_proof_stats,
-        ) in ctx.leaf_proof_steps_with_stats():
-            proofs.append(
-                Proof(
-                    inverted_goal,
-                    leaf_proof_step.running_similarity,
-                    leaf_proof_step,
-                    leaf_proof_stats,
-                )
-            )
-
-        return (
-            sorted(proofs, key=lambda proof: proof.similarity, reverse=True),
-            ctx.stats,
-        )
+        proofs = [Proof.from_rust(rust_proof) for rust_proof in rust_proofs]
+        stats = ProofStats.from_rust(rust_stats)
+        return (proofs, stats)
 
     def purge_similarity_cache(self) -> None:
-        self.similarity_cache.clear()
+        pass
 
     def reset(self) -> None:
         """Clear all knowledge from the prover and wipe the similarity cache"""
-        self.base_knowledge = set()
-        self.purge_similarity_cache()
-
-    def _prove_all_recursive(
-        self,
-        goal: CNFDisjunction,
-        knowledge: Iterable[CNFDisjunction],
-        similarity_func: Optional[SimilarityFunc],
-        ctx: ProofContext,
-        depth: int = 0,
-        parent_state: Optional[ProofStep] = None,
-    ) -> None:
-        if parent_state and depth >= self.max_proof_depth:
-            return
-        if (
-            self.max_resolution_attempts
-            and ctx.stats.attempted_resolutions >= self.max_resolution_attempts
-        ):
-            return
-        # if we don't need to find the best proofs, and we've already found enough, stop
-        if (
-            ctx.max_proofs
-            and not self.find_highest_similarity_proofs
-            and ctx.total_leaf_proofs() >= ctx.max_proofs
-        ):
-            return
-        if depth >= ctx.stats.max_depth_seen:
-            # add 1 to match the depth stat seen in proofs. It's strange if the proof has depth 12, but max_depth_seen is 11
-            ctx.stats.max_depth_seen = depth + 1
-        for clause in knowledge:
-            # resolution always ends up removing a literal from the clause and the goal, and combining the remaining literals
-            # so we know what the length of the resolvent will be before we even try to resolve
-            if (
-                self.max_resolvent_width
-                and len(clause.literals) + len(goal.literals) - 2
-                > self.max_resolvent_width
-            ):
-                continue
-            ctx.stats.attempted_resolutions += 1
-            next_steps = resolve(
-                goal,
-                clause,
-                similarity_func=similarity_func,
-                parent=parent_state,
-                ctx=ctx,
-            )
-            if len(next_steps) > 0:
-                ctx.stats.successful_resolutions += 1
-            for next_step in next_steps:
-                if next_step.resolvent is None:
-                    raise ValueError("Resolvent was unexpectedly not present")
-                if next_step.resolvent.is_empty():
-                    ctx.record_leaf_proof(next_step)
-                else:
-                    # the similarity moving forward can never exceed the running similarity of the parent node,
-                    # so if we've already seen a proof that's better than this step, we can just stop here
-                    # NOTE: we might not find the shortest proof, may want to revisit this in the future
-                    if next_step.running_similarity <= ctx.min_similarity_threshold:
-                        continue
-                    if not ctx.check_resolvent(next_step):
-                        continue
-                    resolvent_width = len(next_step.resolvent.literals)
-                    if resolvent_width >= ctx.stats.max_resolvent_width_seen:
-                        ctx.stats.max_resolvent_width_seen = resolvent_width
-                    self._prove_all_recursive(
-                        next_step.resolvent,
-                        knowledge,
-                        similarity_func,
-                        ctx,
-                        depth + 1,
-                        next_step,
-                    )
+        self.backend.reset()

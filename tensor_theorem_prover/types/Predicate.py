@@ -2,6 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional, Any
 
+from tensor_theorem_prover._rust import RsPredicate
+
 from .Function import BoundFunction
 from .Constant import Constant
 from .Variable import Variable
@@ -34,3 +36,10 @@ class Predicate:
 
     def __str__(self) -> str:
         return self.symbol
+
+    def to_rust(self) -> RsPredicate:
+        return RsPredicate(self.symbol, self.embedding)
+
+    @classmethod
+    def from_rust(cls, rust_predicate: RsPredicate) -> "Predicate":
+        return Predicate(rust_predicate.symbol, rust_predicate.embedding)

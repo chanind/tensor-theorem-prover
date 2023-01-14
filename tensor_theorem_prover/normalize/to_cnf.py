@@ -3,6 +3,11 @@ from dataclasses import dataclass
 from tensor_theorem_prover.normalize.Skolemizer import Skolemizer
 from tensor_theorem_prover.types import Clause, Atom, Not, And, Or
 
+from tensor_theorem_prover._rust import (
+    RsCNFLiteral,
+    RsCNFDisjunction,
+)
+
 from .to_nnf import to_nnf
 from .normalize_variables import normalize_variables
 from .normalize_quantifiers import SimplifiedClause, normalize_quantifiers
@@ -20,14 +25,17 @@ class CNFLiteral:
         else:
             return f"¬{self.atom}"
 
+    def to_rust(self) -> RsCNFLiteral:
+        return RsCNFLiteral(self.atom.to_rust(), self.polarity)
+
+    @classmethod
+    def from_rust(cls, rust_literal: RsCNFLiteral) -> CNFLiteral:
+        return CNFLiteral(Atom.from_rust(rust_literal.atom), rust_literal.polarity)
+
 
 @dataclass(frozen=True)
 class CNFDisjunction:
     literals: frozenset[CNFLiteral]
-
-    # This is just here so we don't need to do a hack to get a single literal out of the literals set
-    # this should always be one of the literals in self.literals
-    head: CNFLiteral | None
 
     def __str__(self) -> str:
         inner_disjunction = " ∨ ".join(
@@ -37,14 +45,18 @@ class CNFDisjunction:
 
     @classmethod
     def from_literals_list(cls, literals: list[CNFLiteral]) -> CNFDisjunction:
-        return CNFDisjunction(frozenset(literals), literals[0])
+        return CNFDisjunction(frozenset(literals))
+
+    def to_rust(self) -> RsCNFDisjunction:
+        return RsCNFDisjunction(set(literal.to_rust() for literal in self.literals))
 
     @classmethod
-    def empty(cls) -> CNFDisjunction:
-        return CNFDisjunction(frozenset(), None)
-
-    def is_empty(self) -> bool:
-        return self.head is None
+    def from_rust(cls, rust_disjunction: RsCNFDisjunction) -> CNFDisjunction:
+        return CNFDisjunction(
+            frozenset(
+                CNFLiteral.from_rust(literal) for literal in rust_disjunction.literals
+            )
+        )
 
 
 def to_cnf(clause: Clause, skolemizer: Skolemizer) -> list[CNFDisjunction]:
@@ -65,7 +77,7 @@ def to_cnf(clause: Clause, skolemizer: Skolemizer) -> list[CNFDisjunction]:
 def _norm_clause_to_cnf(clause: SimplifiedClause) -> list[CNFDisjunction]:
     if isinstance(clause, Atom) or isinstance(clause, Not):
         literal = _element_to_cnf_literal(clause)
-        return [CNFDisjunction(frozenset({literal}), literal)]
+        return [CNFDisjunction(frozenset({literal}))]
     if isinstance(clause, And):
         disjunctions = []
         for term in clause.args:
