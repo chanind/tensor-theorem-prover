@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 use pyo3::prelude::*;
 
 mod prover;

@@ -9,6 +9,10 @@ use crate::{
 
 use super::{unify, Unification};
 
+lazy_static! {
+    static ref VAR_NAME_REGEX: Regex = Regex::new(r"_\d+$").unwrap();
+}
+
 /// Resolve a source and target CNF disjunction with substitutions
 ///    Args:
 ///        source: The source CNF disjunction.
@@ -158,8 +162,7 @@ fn find_non_overlapping_var_names(
     let overlapping_variables = source_vars.intersection(target_vars);
     let mut renamed_vars = HashMap::new();
     for var in overlapping_variables {
-        let re = Regex::new(r"_\d+$").unwrap();
-        let base_name = re.replace(&var.name, "");
+        let base_name = VAR_NAME_REGEX.replace(&var.name, "");
         let mut counter = 0;
         loop {
             counter += 1;
