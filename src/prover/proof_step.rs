@@ -2,7 +2,10 @@ use pyo3::prelude::*;
 
 use std::{collections::HashMap, sync::Arc};
 
-use crate::types::{CNFDisjunction, CNFLiteral, Term, Variable};
+use crate::{
+    types::{CNFDisjunction, CNFLiteral, Term, Variable},
+    util::PyArcItem,
+};
 
 // TODO: should this use references?
 pub type SubstitutionsMap = HashMap<Variable, Term>;
@@ -24,19 +27,19 @@ impl ProofStepNode {
 #[derive(Clone, PartialEq, Debug)]
 pub struct ProofStep {
     #[pyo3(get)]
-    pub source: CNFDisjunction,
+    pub source: PyArcItem<CNFDisjunction>,
     #[pyo3(get)]
-    pub target: CNFDisjunction,
+    pub target: PyArcItem<CNFDisjunction>,
     #[pyo3(get)]
-    pub source_unification_literal: CNFLiteral,
+    pub source_unification_literal: PyArcItem<CNFLiteral>,
     #[pyo3(get)]
-    pub target_unification_literal: CNFLiteral,
+    pub target_unification_literal: PyArcItem<CNFLiteral>,
     #[pyo3(get)]
     pub source_substitutions: SubstitutionsMap,
     #[pyo3(get)]
     pub target_substitutions: SubstitutionsMap,
     #[pyo3(get)]
-    pub resolvent: CNFDisjunction,
+    pub resolvent: PyArcItem<CNFDisjunction>,
     #[pyo3(get)]
     pub similarity: f64,
     // this refers to the overall similarity of this step and all of its parents
@@ -48,13 +51,13 @@ pub struct ProofStep {
 }
 impl ProofStep {
     pub fn new(
-        source: CNFDisjunction,
-        target: CNFDisjunction,
-        source_unification_literal: CNFLiteral,
-        target_unification_literal: CNFLiteral,
+        source: PyArcItem<CNFDisjunction>,
+        target: PyArcItem<CNFDisjunction>,
+        source_unification_literal: PyArcItem<CNFLiteral>,
+        target_unification_literal: PyArcItem<CNFLiteral>,
         source_substitutions: SubstitutionsMap,
         target_substitutions: SubstitutionsMap,
-        resolvent: CNFDisjunction,
+        resolvent: PyArcItem<CNFDisjunction>,
         similarity: f64,
         running_similarity: f64,
         depth: usize,

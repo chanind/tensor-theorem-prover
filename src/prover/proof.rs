@@ -59,7 +59,7 @@ impl Proof {
             .goal
             .literals
             .iter()
-            .flat_map(|literal| literal.atom.terms.iter())
+            .flat_map(|literal| literal.item.atom.terms.iter())
             .collect::<Vec<&Term>>();
         let goal_variables = find_variables_in_terms(&goal_terms);
         let step_substitutions = self

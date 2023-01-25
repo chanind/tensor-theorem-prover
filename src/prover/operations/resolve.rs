@@ -69,6 +69,7 @@ use std::collections::{BTreeSet, HashMap};
 use crate::{
     prover::{proof_step::ProofStepNode, ProofContext, ProofStep, SubstitutionsMap},
     types::{Atom, CNFDisjunction, CNFLiteral, Term, Variable},
+    util::PyArcItem,
 };
 
 use super::{unify, Unification};
@@ -82,20 +83,20 @@ use super::{unify, Unification};
 ///    Returns:
 ///        A list of proof states corresponding to each possible resolution.
 pub fn resolve(
-    source: &CNFDisjunction,
-    target: &CNFDisjunction,
+    source: &PyArcItem<CNFDisjunction>,
+    target: &PyArcItem<CNFDisjunction>,
     ctx: &mut ProofContext,
     parent_node: Option<&ProofStepNode>,
 ) -> Vec<ProofStepNode> {
     let mut next_steps = Vec::new();
-    let source_literal = source.literals.first().unwrap();
-    for target_literal in target.literals.iter() {
+    let source_literal = source.item.literals.first().unwrap();
+    for target_literal in target.item.literals.iter() {
         // we can only resolve literals with the opposite polarity
-        if source_literal.polarity == target_literal.polarity {
+        if source_literal.item.polarity == target_literal.item.polarity {
             continue;
         }
         ctx.stats.attempted_unifications += 1;
-        let unification = unify(&source_literal.atom, &target_literal.atom, ctx);
+        let unification = unify(&source_literal.item.atom, &target_literal.item.atom, ctx);
         if let Some(unification) = unification {
             ctx.stats.successful_unifications += 1;
 
@@ -200,19 +201,19 @@ pub fn resolve(
 ///    Returns:
 ///        A proof state corresponding to the resolution
 fn build_resolvent(
-    source: &CNFDisjunction,
-    target: &CNFDisjunction,
-    source_literal: &CNFLiteral,
-    target_literal: &CNFLiteral,
+    source: &PyArcItem<CNFDisjunction>,
+    target: &PyArcItem<CNFDisjunction>,
+    source_literal: &PyArcItem<CNFLiteral>,
+    target_literal: &PyArcItem<CNFLiteral>,
     unification: &Unification,
-) -> CNFDisjunction {
+) -> PyArcItem<CNFDisjunction> {
     // these are the literals that will be combined into the resolved disjunction
-    let mut source_literals = source.literals.clone();
+    let mut source_literals = source.item.literals.clone();
     assert!(
         source_literals.remove(source_literal),
         "source literal not found in source disjunction"
     );
-    let mut target_literals = target.literals.clone();
+    let mut target_literals = target.item.literals.clone();
     assert!(
         target_literals.remove(target_literal),
         "target literal not found in target disjunction"
@@ -240,9 +241,9 @@ fn build_resolvent(
         .cloned()
         .collect::<BTreeSet<_>>();
     if resolvent_literals.is_empty() {
-        CNFDisjunction::new(BTreeSet::new())
+        PyArcItem::new(CNFDisjunction::new(BTreeSet::new()))
     } else {
-        CNFDisjunction::new(resolvent_literals)
+        PyArcItem::new(CNFDisjunction::new(resolvent_literals))
     }
 }
 
@@ -259,12 +260,12 @@ fn build_resolvent(
 
 /// return a list of all variables in the literals that aren't being substituted
 fn find_unused_variables(
-    literals: &BTreeSet<CNFLiteral>,
+    literals: &BTreeSet<PyArcItem<CNFLiteral>>,
     substitutions: &SubstitutionsMap,
 ) -> BTreeSet<Variable> {
     let mut unused_variables = BTreeSet::new();
     for literal in literals {
-        for term in &literal.atom.terms {
+        for term in &literal.item.atom.terms {
             if let Term::Variable(var) = term {
                 if !substitutions.contains_key(var) {
                     unused_variables.insert(var.clone());
@@ -337,27 +338,49 @@ fn find_non_overlapping_var_names(
 //     return new_literals
 
 fn rename_variables_in_literals(
-    literals: &BTreeSet<CNFLiteral>,
+    literals: &BTreeSet<PyArcItem<CNFLiteral>>,
     rename_map: &HashMap<Variable, Variable>,
-) -> BTreeSet<CNFLiteral> {
+) -> BTreeSet<PyArcItem<CNFLiteral>> {
     let mut new_literals = BTreeSet::new();
     for literal in literals {
-        let mut terms = Vec::new();
-        for term in &literal.atom.terms {
-            if let Term::Variable(var) = term {
-                if let Some(new_var) = rename_map.get(var) {
-                    terms.push(Term::Variable(new_var.clone()));
+        // don't rebuild a literal from scratch if it doesn't need to be changed
+        if literal_requires_var_rename(&literal, &rename_map) {
+            let mut terms = Vec::new();
+            for term in &literal.item.atom.terms {
+                if let Term::Variable(var) = term {
+                    if let Some(new_var) = rename_map.get(var) {
+                        terms.push(Term::Variable(new_var.clone()));
+                    } else {
+                        terms.push(term.clone());
+                    }
                 } else {
                     terms.push(term.clone());
                 }
-            } else {
-                terms.push(term.clone());
             }
+            let new_atom = Atom::new(literal.item.atom.predicate.clone(), terms);
+            new_literals.insert(PyArcItem::new(CNFLiteral::new(
+                new_atom,
+                literal.item.polarity,
+            )));
+        } else {
+            new_literals.insert(literal.clone());
         }
-        let new_atom = Atom::new(literal.atom.predicate.clone(), terms);
-        new_literals.insert(CNFLiteral::new(new_atom, literal.polarity));
     }
     new_literals
+}
+
+fn literal_requires_var_rename(
+    literal: &PyArcItem<CNFLiteral>,
+    rename_map: &HashMap<Variable, Variable>,
+) -> bool {
+    for term in &literal.item.atom.terms {
+        if let Term::Variable(var) = term {
+            if rename_map.contains_key(var) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 // def _perform_substitution(
@@ -376,27 +399,49 @@ fn rename_variables_in_literals(
 //     return new_literals
 
 fn perform_substitution(
-    literals: &BTreeSet<CNFLiteral>,
+    literals: &BTreeSet<PyArcItem<CNFLiteral>>,
     substitutions: &SubstitutionsMap,
-) -> BTreeSet<CNFLiteral> {
+) -> BTreeSet<PyArcItem<CNFLiteral>> {
     let mut new_literals = BTreeSet::new();
     for literal in literals {
-        let mut terms = Vec::new();
-        for term in &literal.atom.terms {
-            if let Term::Variable(var) = term {
-                if let Some(new_term) = substitutions.get(var) {
-                    terms.push(new_term.clone());
+        // don't rebuild a literal from scratch if it doesn't need to be changed
+        if literal_requires_substitution(literal, substitutions) {
+            let mut terms = Vec::new();
+            for term in &literal.item.atom.terms {
+                if let Term::Variable(var) = term {
+                    if let Some(new_term) = substitutions.get(var) {
+                        terms.push(new_term.clone());
+                    } else {
+                        terms.push(term.clone());
+                    }
                 } else {
                     terms.push(term.clone());
                 }
-            } else {
-                terms.push(term.clone());
             }
+            let new_atom = Atom::new(literal.item.atom.predicate.clone(), terms);
+            new_literals.insert(PyArcItem::new(CNFLiteral::new(
+                new_atom,
+                literal.item.polarity,
+            )));
+        } else {
+            new_literals.insert(literal.clone());
         }
-        let new_atom = Atom::new(literal.atom.predicate.clone(), terms);
-        new_literals.insert(CNFLiteral::new(new_atom, literal.polarity));
     }
     new_literals
+}
+
+fn literal_requires_substitution(
+    literal: &PyArcItem<CNFLiteral>,
+    substitutions: &SubstitutionsMap,
+) -> bool {
+    for term in &literal.item.atom.terms {
+        if let Term::Variable(var) = term {
+            if substitutions.contains_key(var) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 #[cfg(test)]
@@ -419,8 +464,8 @@ mod test {
     #[test]
     fn test_find_unused_variables() {
         let literals = btset! {
-            CNFLiteral::new(Atom::new(pred1(), vec![x().into(), const1().into()]), true),
-            CNFLiteral::new(Atom::new(pred2(), vec![y().into()]), false),
+            PyArcItem::new(CNFLiteral::new(Atom::new(pred1(), vec![x().into(), const1().into()]), true)),
+            PyArcItem::new(CNFLiteral::new(Atom::new(pred2(), vec![y().into()]), false)),
         };
         assert_eq!(
             find_unused_variables(&literals, &HashMap::new()),
@@ -513,16 +558,16 @@ mod test {
     #[test]
     fn test_rename_variables_in_literals() {
         let literals = btset! {
-            CNFLiteral::new(pred1().atom(vec![x().into(), const1().into()]), true),
-            CNFLiteral::new(pred2().atom(vec![y().into()]), false),
+            PyArcItem::new(CNFLiteral::new(pred1().atom(vec![x().into(), const1().into()]), true)),
+            PyArcItem::new(CNFLiteral::new(pred2().atom(vec![y().into()]), false)),
         };
         let rename_vars_map = hmap! { x() => Variable::new("X_1"), y() => Variable::new("Y_1") };
         let renamed_literals = rename_variables_in_literals(&literals, &rename_vars_map);
         assert_eq!(
             renamed_literals,
             btset! {
-                CNFLiteral::new(pred1().atom(vec![Variable::new("X_1").into(), const1().into()]), true),
-                CNFLiteral::new(pred2().atom(vec![Variable::new("Y_1").into()]), false),
+                PyArcItem::new(CNFLiteral::new(pred1().atom(vec![Variable::new("X_1").into(), const1().into()]), true)),
+                PyArcItem::new(CNFLiteral::new(pred2().atom(vec![Variable::new("Y_1").into()]), false)),
             }
         );
     }
@@ -542,8 +587,8 @@ mod test {
     #[test]
     fn test_perform_substitution_basic() {
         let literals = btset! {
-            CNFLiteral::new(pred1().atom(vec![x().into(), const1().into()]), true),
-            CNFLiteral::new(pred2().atom(vec![y().into()]), false),
+            PyArcItem::new(CNFLiteral::new(pred1().atom(vec![x().into(), const1().into()]), true)),
+            PyArcItem::new(CNFLiteral::new(pred2().atom(vec![y().into()]), false)),
         };
         let substitutions: SubstitutionsMap =
             hmap! { x() => const2().into(), y() => const1().into() };
@@ -551,8 +596,8 @@ mod test {
         assert_eq!(
             substituted_literals,
             btset! {
-                CNFLiteral::new(pred1().atom(vec![const2().into(), const1().into()]), true),
-                CNFLiteral::new(pred2().atom(vec![const1().into()]), false),
+                PyArcItem::new(CNFLiteral::new(pred1().atom(vec![const2().into(), const1().into()]), true)),
+                PyArcItem::new(CNFLiteral::new(pred2().atom(vec![const1().into()]), false)),
             }
         );
     }
@@ -571,14 +616,14 @@ mod test {
     #[test]
     fn test_perform_substitution_with_repeated_vars() {
         let literals = btset! {
-            CNFLiteral::new(pred1().atom(vec![x().into(), y().into()]), true),
+            PyArcItem::new(CNFLiteral::new(pred1().atom(vec![x().into(), y().into()]), true)),
         };
         let substitutions: SubstitutionsMap = hmap! { x() => y().into(), y() => const2().into() };
         let substituted_literals = perform_substitution(&literals, &substitutions);
         assert_eq!(
             substituted_literals,
             btset! {
-                CNFLiteral::new(pred1().atom(vec![y().into(), const2().into()]), true),
+                PyArcItem::new(CNFLiteral::new(pred1().atom(vec![y().into(), const2().into()]), true)),
             }
         );
     }
@@ -617,20 +662,25 @@ mod test {
 
     #[test]
     fn test_build_resolvent() {
-        let source_literal =
-            CNFLiteral::new(pred2().atom(vec![y().into(), const2().into()]), false);
-        let target_literal = CNFLiteral::new(pred2().atom(vec![const1().into(), x().into()]), true);
+        let source_literal = PyArcItem::new(CNFLiteral::new(
+            pred2().atom(vec![y().into(), const2().into()]),
+            false,
+        ));
+        let target_literal = PyArcItem::new(CNFLiteral::new(
+            pred2().atom(vec![const1().into(), x().into()]),
+            true,
+        ));
 
         let source_literals = btset! {
             source_literal.clone(),
-            CNFLiteral::new(pred1().atom(vec![y().into(), const1().into()]), true),
+            PyArcItem::new(CNFLiteral::new(pred1().atom(vec![y().into(), const1().into()]), true)),
         };
-        let source_disjunction = CNFDisjunction::new(source_literals);
+        let source_disjunction = PyArcItem::new(CNFDisjunction::new(source_literals));
         let target_literals = btset! {
             target_literal.clone(),
-            CNFLiteral::new(pred2().atom(vec![const2().into(), x().into()]), false),
+            PyArcItem::new(CNFLiteral::new(pred2().atom(vec![const2().into(), x().into()]), false)),
         };
-        let target_disjunction = CNFDisjunction::new(target_literals);
+        let target_disjunction = PyArcItem::new(CNFDisjunction::new(target_literals));
         let unification = Unification {
             similarity: 1.0,
             source_substitutions: hmap! { y() => const1().into() },
@@ -645,10 +695,13 @@ mod test {
         );
 
         let expected_literals = btset! {
-            CNFLiteral::new(pred1().atom(vec![const1().into(), const1().into()]), true),
-            CNFLiteral::new(pred2().atom(vec![const2().into(), const2().into()]), false),
+            PyArcItem::new(CNFLiteral::new(pred1().atom(vec![const1().into(), const1().into()]), true)),
+            PyArcItem::new(CNFLiteral::new(pred2().atom(vec![const2().into(), const2().into()]), false)),
         };
-        assert_eq!(resolvent, CNFDisjunction::new(expected_literals));
+        assert_eq!(
+            resolvent,
+            PyArcItem::new(CNFDisjunction::new(expected_literals))
+        );
     }
 
     // def test_build_resolvent_with_similar_predicates_with_embeddings() -> None:
@@ -695,19 +748,25 @@ mod test {
         let p1 = Predicate::new("p1", Some(embed_p1));
         let p1_same_name = Predicate::new("p1", Some(embed_p1_same_name));
 
-        let source_literal = CNFLiteral::new(p1.atom(vec![y().into(), const2().into()]), false);
-        let target_literal = CNFLiteral::new(p1.atom(vec![const1().into(), x().into()]), true);
+        let source_literal = PyArcItem::new(CNFLiteral::new(
+            p1.atom(vec![y().into(), const2().into()]),
+            false,
+        ));
+        let target_literal = PyArcItem::new(CNFLiteral::new(
+            p1.atom(vec![const1().into(), x().into()]),
+            true,
+        ));
 
         let source_literals = btset! {
             source_literal.clone(),
-            CNFLiteral::new(p1_same_name.atom(vec![y().into(), const1().into()]), true),
+            PyArcItem::new(CNFLiteral::new(p1_same_name.atom(vec![y().into(), const1().into()]), true)),
         };
-        let source_disjunction = CNFDisjunction::new(source_literals);
+        let source_disjunction = PyArcItem::new(CNFDisjunction::new(source_literals));
         let target_literals = btset! {
             target_literal.clone(),
-            CNFLiteral::new(pred2().atom(vec![const2().into(), x().into()]), false),
+            PyArcItem::new(CNFLiteral::new(pred2().atom(vec![const2().into(), x().into()]), false)),
         };
-        let target_disjunction = CNFDisjunction::new(target_literals);
+        let target_disjunction = PyArcItem::new(CNFDisjunction::new(target_literals));
         let unification = Unification {
             similarity: 1.0,
             source_substitutions: hmap! { y() => const1().into() },
@@ -722,9 +781,12 @@ mod test {
         );
 
         let expected_literals = btset! {
-            CNFLiteral::new(p1_same_name.atom(vec![const1().into(), const1().into()]), true),
-            CNFLiteral::new(pred2().atom(vec![const2().into(), const2().into()]), false),
+            PyArcItem::new(CNFLiteral::new(p1_same_name.atom(vec![const1().into(), const1().into()]), true)),
+            PyArcItem::new(CNFLiteral::new(pred2().atom(vec![const2().into(), const2().into()]), false)),
         };
-        assert_eq!(resolvent, CNFDisjunction::new(expected_literals));
+        assert_eq!(
+            resolvent,
+            PyArcItem::new(CNFDisjunction::new(expected_literals))
+        );
     }
 }

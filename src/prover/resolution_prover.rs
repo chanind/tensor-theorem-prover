@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use pyo3::prelude::*;
 
 use crate::types::CNFDisjunction;
+use crate::util::PyArcItem;
 
 use super::operations::resolve;
 use super::{Proof, ProofContext, ProofStats, ProofStepNode};
@@ -53,7 +54,7 @@ pub struct ResolutionProverBackend {
     cache_similarity: bool,
     skip_seen_resolvents: bool,
     find_highest_similarity_proofs: bool,
-    base_knowledge: HashSet<CNFDisjunction>,
+    base_knowledge: HashSet<PyArcItem<CNFDisjunction>>,
 }
 #[pymethods]
 impl ResolutionProverBackend {
@@ -92,7 +93,7 @@ impl ResolutionProverBackend {
         cache_similarity: bool,
         skip_seen_resolvents: bool,
         find_highest_similarity_proofs: bool,
-        base_knowledge: HashSet<CNFDisjunction>,
+        base_knowledge: HashSet<PyArcItem<CNFDisjunction>>,
     ) -> Self {
         Self {
             max_proof_depth,
@@ -112,7 +113,7 @@ impl ResolutionProverBackend {
     //         self.base_knowledge.update(self._parse_knowledge(knowledge))
 
     pub fn extend_knowledge(&mut self, knowledge: HashSet<CNFDisjunction>) {
-        self.base_knowledge.extend(knowledge);
+        self.base_knowledge.extend(knowledge_to_arc(knowledge));
     }
 
     //     def prove_all_with_stats(
@@ -156,8 +157,9 @@ impl ResolutionProverBackend {
         let parsed_extra_knowledge = extra_knowledge.unwrap_or_default();
         let mut proofs = vec![];
         let mut knowledge = self.base_knowledge.clone();
-        knowledge.extend(parsed_extra_knowledge);
-        knowledge.extend(inverted_goals.clone());
+        let arc_inverted_goals = knowledge_to_arc(inverted_goals.clone());
+        knowledge.extend(knowledge_to_arc(parsed_extra_knowledge));
+        knowledge.extend(arc_inverted_goals.clone());
         let mut ctx = ProofContext::new(
             self.min_similarity_threshold,
             max_proofs,
@@ -194,11 +196,11 @@ impl ResolutionProverBackend {
         //         ctx.stats,
         //     )
 
-        for inverted_goal in inverted_goals {
+        for inverted_goal in arc_inverted_goals {
             self.prove_all_recursive(inverted_goal.clone(), &knowledge, &mut ctx, 0, None);
             for (leaf_proof_step, leaf_proof_stats) in ctx.leaf_proof_steps_with_stats() {
                 proofs.push(Proof::new(
-                    inverted_goal.clone(),
+                    (*inverted_goal.item).clone(),
                     leaf_proof_step.running_similarity,
                     leaf_proof_stats,
                     leaf_proof_step,
@@ -254,8 +256,8 @@ impl ResolutionProverBackend {
 
     fn prove_all_recursive(
         &self,
-        goal: CNFDisjunction,
-        knowledge: &HashSet<CNFDisjunction>,
+        goal: PyArcItem<CNFDisjunction>,
+        knowledge: &HashSet<PyArcItem<CNFDisjunction>>,
         ctx: &mut ProofContext,
         depth: usize,
         parent_state: Option<ProofStepNode>,
@@ -325,7 +327,7 @@ impl ResolutionProverBackend {
             // resolution always ends up removing a literal from the clause and the goal, and combining the remaining literals
             // so we know what the length of the resolvent will be before we even try to resolve
             if let Some(max_resolvent_width) = self.max_resolvent_width {
-                if clause.literals.len() + goal.literals.len() - 2 > max_resolvent_width {
+                if clause.item.literals.len() + goal.item.literals.len() - 2 > max_resolvent_width {
                     continue;
                 }
             }
@@ -335,7 +337,7 @@ impl ResolutionProverBackend {
                 ctx.stats.successful_resolutions += 1;
             }
             for next_step in next_steps {
-                if next_step.inner.resolvent.literals.is_empty() {
+                if next_step.inner.resolvent.item.literals.is_empty() {
                     ctx.record_leaf_proof(next_step);
                 } else {
                     if next_step.inner.running_similarity <= ctx.min_similarity_threshold {
@@ -344,7 +346,7 @@ impl ResolutionProverBackend {
                     if !ctx.check_resolvent(&next_step.inner) {
                         continue;
                     }
-                    let resolvent_width = next_step.inner.resolvent.literals.len();
+                    let resolvent_width = next_step.inner.resolvent.item.literals.len();
                     if resolvent_width >= ctx.stats.max_resolvent_width_seen {
                         ctx.stats.max_resolvent_width_seen = resolvent_width;
                     }
@@ -359,4 +361,11 @@ impl ResolutionProverBackend {
             }
         }
     }
+}
+
+fn knowledge_to_arc(knowledge: HashSet<CNFDisjunction>) -> HashSet<PyArcItem<CNFDisjunction>> {
+    knowledge
+        .into_iter()
+        .map(|x| PyArcItem::new(x.clone()))
+        .collect()
 }

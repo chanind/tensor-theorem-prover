@@ -5,6 +5,8 @@ use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::hash::Hasher;
 
+use crate::util::PyArcItem;
+
 // based on https://stackoverflow.com/a/75135403/245362
 fn extract_embedding_ptr(embedding: &Option<Py<PyAny>>) -> Option<isize> {
     if let Some(ref embedding_ref) = embedding {
@@ -249,12 +251,12 @@ impl CNFLiteral {
 #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct CNFDisjunction {
     #[pyo3(get)]
-    pub literals: BTreeSet<CNFLiteral>,
+    pub literals: BTreeSet<PyArcItem<CNFLiteral>>,
 }
 #[pymethods]
 impl CNFDisjunction {
     #[new]
-    pub fn new(literals: BTreeSet<CNFLiteral>) -> Self {
+    pub fn new(literals: BTreeSet<PyArcItem<CNFLiteral>>) -> Self {
         Self { literals }
     }
 }

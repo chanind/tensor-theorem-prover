@@ -64,6 +64,8 @@ impl ProofContext {
             if self.scored_leaf_proof_steps.len() > max_proofs {
                 // Remove the proof step with the lowest similarity
                 self.scored_leaf_proof_steps.pop();
+                self.stats.discarded_proofs += 1;
+                self.min_similarity_threshold = self.scored_leaf_proof_steps.last().unwrap().0;
             }
         }
     }
@@ -162,13 +164,14 @@ where
 mod test {
     use crate::prover::{ProofStep, ProofStepNode};
     use crate::types::{Atom, CNFDisjunction, CNFLiteral, Predicate};
+    use crate::util::PyArcItem;
     use std::collections::BTreeSet;
     use std::collections::HashMap;
 
     fn create_proof_step_node(depth: usize, running_similarity: f64) -> ProofStepNode {
         let pred = Predicate::new("Rust", None);
-        let disj = CNFDisjunction::new(BTreeSet::new());
-        let lit = CNFLiteral::new(Atom::new(pred.clone(), vec![]), true);
+        let disj = PyArcItem::new(CNFDisjunction::new(BTreeSet::new()));
+        let lit = PyArcItem::new(CNFLiteral::new(Atom::new(pred.clone(), vec![]), true));
         let subs = HashMap::new();
         ProofStepNode::new(ProofStep::new(
             disj.clone(),
