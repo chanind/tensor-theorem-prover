@@ -6,6 +6,7 @@ use crate::types::CNFDisjunction;
 use crate::util::PyArcItem;
 
 use super::operations::resolve;
+use super::similarity_cache::SimilarityCache;
 use super::{Proof, ProofContext, ProofStats, ProofStepNode};
 
 #[pyclass(name = "RsResolutionProverBackend")]
@@ -15,7 +16,7 @@ pub struct ResolutionProverBackend {
     max_resolvent_width: Option<usize>,
     min_similarity_threshold: f64,
     py_similarity_fn: Option<PyObject>,
-    cache_similarity: bool,
+    similarity_cache: Option<SimilarityCache>,
     skip_seen_resolvents: bool,
     find_highest_similarity_proofs: bool,
     base_knowledge: HashSet<PyArcItem<CNFDisjunction>>,
@@ -40,7 +41,11 @@ impl ResolutionProverBackend {
             max_resolution_attempts,
             py_similarity_fn,
             min_similarity_threshold,
-            cache_similarity,
+            similarity_cache: if cache_similarity {
+                Some(SimilarityCache::new())
+            } else {
+                None
+            },
             skip_seen_resolvents,
             find_highest_similarity_proofs,
             base_knowledge,
@@ -70,7 +75,7 @@ impl ResolutionProverBackend {
             self.min_similarity_threshold,
             max_proofs,
             skip_seen_resolvents.unwrap_or(self.skip_seen_resolvents),
-            self.cache_similarity,
+            self.similarity_cache.clone(),
             self.py_similarity_fn.clone(),
         );
 
@@ -94,8 +99,15 @@ impl ResolutionProverBackend {
         (proofs, ctx.stats)
     }
 
+    pub fn purge_similarity_cache(&mut self) {
+        if let Some(_) = self.similarity_cache.as_mut() {
+            self.similarity_cache = Some(SimilarityCache::new());
+        }
+    }
+
     pub fn reset(&mut self) {
         self.base_knowledge = HashSet::new();
+        self.purge_similarity_cache();
     }
 }
 

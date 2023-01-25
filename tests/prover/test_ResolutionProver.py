@@ -369,7 +369,7 @@ def test_prove_all_can_abort_early_by_setting_max_resolution_attempts() -> None:
     assert stats.attempted_resolutions < 25
 
 
-# TODO: move these 2 tests to rust, and properly allow purging the cache
+# TODO: move these 2 tests to rust
 # def test_purge_similarity_cache() -> None:
 #     prover = ResolutionProver(knowledge=[])
 #     prover.similarity_cache = {(1, 2): 0.5}

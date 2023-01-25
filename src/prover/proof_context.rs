@@ -6,6 +6,7 @@ use std::hash::{Hash, Hasher};
 use crate::types::SimilarityComparable;
 
 use super::proof_step::ProofStepNode;
+use super::similarity_cache::SimilarityCache;
 use super::ProofStats;
 use super::ProofStep;
 
@@ -18,7 +19,7 @@ pub struct ProofContext {
     scored_leaf_proof_steps: Vec<(f64, usize, ProofStepNode, ProofStats)>,
     skip_seen_resolvents: bool,
     seen_resolvents: HashMap<u64, (usize, f64)>,
-    similarity_cache: Option<HashMap<(String, Option<isize>, String, Option<isize>), f64>>,
+    similarity_cache: Option<SimilarityCache>,
     py_similarity_fn: Option<PyObject>,
 }
 impl ProofContext {
@@ -26,7 +27,7 @@ impl ProofContext {
         initial_min_similarity_threshold: f64,
         max_proofs: Option<usize>,
         skip_seen_resolvents: bool,
-        cache_similarity: bool,
+        similarity_cache: Option<SimilarityCache>,
         py_similarity_fn: Option<PyObject>,
     ) -> Self {
         Self {
@@ -36,11 +37,7 @@ impl ProofContext {
             scored_leaf_proof_steps: Vec::new(),
             seen_resolvents: HashMap::new(),
             skip_seen_resolvents,
-            similarity_cache: if cache_similarity {
-                Some(HashMap::new())
-            } else {
-                None
-            },
+            similarity_cache,
             py_similarity_fn,
         }
     }
@@ -190,13 +187,13 @@ mod test {
 
     #[test]
     fn test_new() {
-        let ctx = super::ProofContext::new(0.0, Some(2), false, false, None);
+        let ctx = super::ProofContext::new(0.0, Some(2), false, None, None);
         assert_eq!(ctx.max_proofs, Some(2));
     }
 
     #[test]
     fn test_record_leaf_proof_keeps_step_with_highest_similarity() {
-        let mut ctx = super::ProofContext::new(0.0, Some(1), false, false, None);
+        let mut ctx = super::ProofContext::new(0.0, Some(1), false, None, None);
         let proof_step1 = create_proof_step_node(2, 0.5);
         ctx.record_leaf_proof(proof_step1.clone());
         assert_eq!(ctx.scored_leaf_proof_steps.len(), 1);
@@ -210,7 +207,7 @@ mod test {
 
     #[test]
     fn test_record_leaf_proof_keeps_step_with_lowest_depth_if_similarity_is_equal() {
-        let mut ctx = super::ProofContext::new(0.0, Some(1), false, false, None);
+        let mut ctx = super::ProofContext::new(0.0, Some(1), false, None, None);
         let proof_step1 = create_proof_step_node(4, 0.5);
         ctx.record_leaf_proof(proof_step1.clone());
         assert_eq!(ctx.scored_leaf_proof_steps.len(), 1);
@@ -224,8 +221,7 @@ mod test {
 
     #[test]
     fn test_check_resolvent() {
-        let mut ctx: super::ProofContext =
-            super::ProofContext::new(0.0, Some(1), true, false, None);
+        let mut ctx: super::ProofContext = super::ProofContext::new(0.0, Some(1), true, None, None);
         let proof_step = create_proof_step_node(4, 0.5);
         assert!(ctx.check_resolvent(&proof_step.inner));
 

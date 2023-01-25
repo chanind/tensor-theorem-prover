@@ -6,6 +6,7 @@ mod proof_context;
 mod proof_stats;
 mod proof_step;
 mod resolution_prover;
+mod similarity_cache;
 
 pub use proof::Proof;
 pub use proof_context::ProofContext;
