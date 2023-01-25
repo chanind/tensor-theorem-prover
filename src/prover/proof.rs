@@ -45,7 +45,7 @@ impl Proof {
         let mut cur_step = self.leaf_proof_step.clone();
         while let Some(parent) = &cur_step.parent {
             proof_steps.push(cur_step.clone());
-            cur_step = *parent.inner.clone();
+            cur_step = (*parent.inner).clone();
         }
         proof_steps.push(cur_step);
         proof_steps.reverse();

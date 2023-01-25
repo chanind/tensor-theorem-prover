@@ -67,7 +67,7 @@ use regex::Regex;
 use std::collections::{BTreeSet, HashMap};
 
 use crate::{
-    prover::{proof_step::ProofStepBox, ProofContext, ProofStep, SubstitutionsMap},
+    prover::{proof_step::ProofStepNode, ProofContext, ProofStep, SubstitutionsMap},
     types::{Atom, CNFDisjunction, CNFLiteral, Term, Variable},
 };
 
@@ -85,8 +85,8 @@ pub fn resolve(
     source: &CNFDisjunction,
     target: &CNFDisjunction,
     ctx: &mut ProofContext,
-    parent: Option<&ProofStep>,
-) -> Vec<ProofStep> {
+    parent_node: Option<&ProofStepNode>,
+) -> Vec<ProofStepNode> {
     let mut next_steps = Vec::new();
     let source_literal = source.literals.first().unwrap();
     for target_literal in target.literals.iter() {
@@ -106,20 +106,19 @@ pub fn resolve(
                 &target_literal,
                 &unification,
             );
-            let running_similarity = match parent {
-                Some(parent) => unification.similarity.min(parent.running_similarity),
+            let running_similarity = match parent_node {
+                Some(parent) => unification.similarity.min(parent.inner.running_similarity),
                 None => unification.similarity,
             };
-            let depth = match parent {
-                Some(parent) => parent.depth + 1,
+            let depth = match parent_node {
+                Some(parent) => parent.inner.depth + 1,
                 None => 0,
             };
-            let parent_box = match parent {
-                // TODO: Do some RC stuff here to avoid this clone
-                Some(parent) => Some(ProofStepBox::new(parent.clone())),
+            let new_parent: Option<ProofStepNode> = match parent_node {
+                Some(parent) => Some(parent.clone()),
                 None => None,
             };
-            let step = ProofStep::new(
+            let step = ProofStepNode::new(ProofStep::new(
                 source.clone(),
                 target.clone(),
                 source_literal.clone(),
@@ -130,8 +129,8 @@ pub fn resolve(
                 unification.similarity,
                 running_similarity,
                 depth,
-                parent_box,
-            );
+                new_parent,
+            ));
             next_steps.push(step);
         }
     }

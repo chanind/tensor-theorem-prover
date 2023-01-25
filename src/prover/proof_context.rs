@@ -5,6 +5,7 @@ use std::hash::{Hash, Hasher};
 
 use crate::types::SimilarityComparable;
 
+use super::proof_step::ProofStepNode;
 use super::ProofStats;
 use super::ProofStep;
 
@@ -14,7 +15,7 @@ pub struct ProofContext {
     pub stats: ProofStats,
     pub min_similarity_threshold: f64,
     pub max_proofs: Option<usize>,
-    scored_leaf_proof_steps: Vec<(f64, usize, ProofStep, ProofStats)>,
+    scored_leaf_proof_steps: Vec<(f64, usize, ProofStepNode, ProofStats)>,
     skip_seen_resolvents: bool,
     seen_resolvents: HashMap<u64, (usize, f64)>,
     similarity_cache: Option<HashMap<(String, Option<isize>, String, Option<isize>), f64>>,
@@ -44,11 +45,11 @@ impl ProofContext {
         }
     }
 
-    pub fn record_leaf_proof(&mut self, proof_step: ProofStep) {
+    pub fn record_leaf_proof(&mut self, proof_step: ProofStepNode) {
         // make sure to clone the stats before appending, since the stats will continue to get mutated after this
         self.scored_leaf_proof_steps.push((
-            proof_step.running_similarity,
-            proof_step.depth,
+            proof_step.inner.running_similarity,
+            proof_step.inner.depth,
             proof_step,
             self.stats.clone(),
         ));
@@ -70,7 +71,7 @@ impl ProofContext {
     pub fn leaf_proof_steps_with_stats(&self) -> Vec<(ProofStep, ProofStats)> {
         self.scored_leaf_proof_steps
             .iter()
-            .map(|(_, _, proof_step, stats)| (proof_step.clone(), stats.clone()))
+            .map(|(_, _, proof_step, stats)| ((*proof_step.inner).clone(), stats.clone()))
             .collect::<Vec<(ProofStep, ProofStats)>>()
     }
 
@@ -159,16 +160,17 @@ where
 
 #[cfg(test)]
 mod test {
+    use crate::prover::{ProofStep, ProofStepNode};
     use crate::types::{Atom, CNFDisjunction, CNFLiteral, Predicate};
     use std::collections::BTreeSet;
     use std::collections::HashMap;
 
-    fn create_proof_step(depth: usize, running_similarity: f64) -> super::ProofStep {
+    fn create_proof_step_node(depth: usize, running_similarity: f64) -> ProofStepNode {
         let pred = Predicate::new("Rust", None);
         let disj = CNFDisjunction::new(BTreeSet::new());
         let lit = CNFLiteral::new(Atom::new(pred.clone(), vec![]), true);
         let subs = HashMap::new();
-        super::ProofStep::new(
+        ProofStepNode::new(ProofStep::new(
             disj.clone(),
             disj.clone(),
             lit.clone(),
@@ -180,7 +182,7 @@ mod test {
             running_similarity,
             depth,
             None,
-        )
+        ))
     }
 
     #[test]
@@ -192,12 +194,12 @@ mod test {
     #[test]
     fn test_record_leaf_proof_keeps_step_with_highest_similarity() {
         let mut ctx = super::ProofContext::new(0.0, Some(1), false, false, None);
-        let proof_step1 = create_proof_step(2, 0.5);
+        let proof_step1 = create_proof_step_node(2, 0.5);
         ctx.record_leaf_proof(proof_step1.clone());
         assert_eq!(ctx.scored_leaf_proof_steps.len(), 1);
         assert_eq!(ctx.scored_leaf_proof_steps[0].2, proof_step1);
         // higher similarity, so it should kick out step 1
-        let proof_step2 = create_proof_step(4, 0.6);
+        let proof_step2 = create_proof_step_node(4, 0.6);
         ctx.record_leaf_proof(proof_step2.clone());
         assert_eq!(ctx.scored_leaf_proof_steps.len(), 1);
         assert_eq!(ctx.scored_leaf_proof_steps[0].2, proof_step2);
@@ -206,12 +208,12 @@ mod test {
     #[test]
     fn test_record_leaf_proof_keeps_step_with_lowest_depth_if_similarity_is_equal() {
         let mut ctx = super::ProofContext::new(0.0, Some(1), false, false, None);
-        let proof_step1 = create_proof_step(4, 0.5);
+        let proof_step1 = create_proof_step_node(4, 0.5);
         ctx.record_leaf_proof(proof_step1.clone());
         assert_eq!(ctx.scored_leaf_proof_steps.len(), 1);
         assert_eq!(ctx.scored_leaf_proof_steps[0].2, proof_step1);
         // higher similarity, so it should kick out step 1
-        let proof_step2 = create_proof_step(3, 0.5);
+        let proof_step2 = create_proof_step_node(3, 0.5);
         ctx.record_leaf_proof(proof_step2.clone());
         assert_eq!(ctx.scored_leaf_proof_steps.len(), 1);
         assert_eq!(ctx.scored_leaf_proof_steps[0].2, proof_step2);
@@ -221,20 +223,20 @@ mod test {
     fn test_check_resolvent() {
         let mut ctx: super::ProofContext =
             super::ProofContext::new(0.0, Some(1), true, false, None);
-        let proof_step = create_proof_step(4, 0.5);
-        assert!(ctx.check_resolvent(&proof_step));
+        let proof_step = create_proof_step_node(4, 0.5);
+        assert!(ctx.check_resolvent(&proof_step.inner));
 
-        let worse_sim_step = create_proof_step(4, 0.4);
-        assert!(!ctx.check_resolvent(&worse_sim_step));
+        let worse_sim_step = create_proof_step_node(4, 0.4);
+        assert!(!ctx.check_resolvent(&worse_sim_step.inner));
 
-        let worse_depth_step = create_proof_step(5, 0.5);
-        assert!(!ctx.check_resolvent(&worse_depth_step));
+        let worse_depth_step = create_proof_step_node(5, 0.5);
+        assert!(!ctx.check_resolvent(&worse_depth_step.inner));
 
-        let better_sim_step = create_proof_step(4, 0.6);
-        assert!(ctx.check_resolvent(&better_sim_step));
+        let better_sim_step = create_proof_step_node(4, 0.6);
+        assert!(ctx.check_resolvent(&better_sim_step.inner));
 
-        let better_depth_step = create_proof_step(3, 0.5);
-        assert!(ctx.check_resolvent(&better_depth_step));
+        let better_depth_step = create_proof_step_node(3, 0.5);
+        assert!(ctx.check_resolvent(&better_depth_step.inner));
 
         assert_eq!(ctx.stats.resolvent_checks, 5);
         assert_eq!(ctx.stats.resolvent_check_hits, 2);

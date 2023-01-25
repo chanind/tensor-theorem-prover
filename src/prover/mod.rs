@@ -10,7 +10,7 @@ mod resolution_prover;
 pub use proof::Proof;
 pub use proof_context::ProofContext;
 pub use proof_stats::ProofStats;
-pub use proof_step::{ProofStep, SubstitutionsMap};
+pub use proof_step::{ProofStep, ProofStepNode, SubstitutionsMap};
 pub use resolution_prover::ResolutionProverBackend;
 
 pub fn register_python_symbols(_py: Python<'_>, module: &PyModule) -> PyResult<()> {

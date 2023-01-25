@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 use crate::types::CNFDisjunction;
 
 use super::operations::resolve;
-use super::{Proof, ProofContext, ProofStats, ProofStep};
+use super::{Proof, ProofContext, ProofStats, ProofStepNode};
 
 // from tensor_theorem_prover.normalize import (
 //     Skolemizer,
@@ -258,7 +258,7 @@ impl ResolutionProverBackend {
         knowledge: &HashSet<CNFDisjunction>,
         ctx: &mut ProofContext,
         depth: usize,
-        parent_state: Option<ProofStep>,
+        parent_state: Option<ProofStepNode>,
     ) {
         if parent_state.is_some() && depth >= self.max_proof_depth {
             return;
@@ -335,21 +335,21 @@ impl ResolutionProverBackend {
                 ctx.stats.successful_resolutions += 1;
             }
             for next_step in next_steps {
-                if next_step.resolvent.literals.is_empty() {
+                if next_step.inner.resolvent.literals.is_empty() {
                     ctx.record_leaf_proof(next_step);
                 } else {
-                    if next_step.running_similarity <= ctx.min_similarity_threshold {
+                    if next_step.inner.running_similarity <= ctx.min_similarity_threshold {
                         continue;
                     }
-                    if !ctx.check_resolvent(&next_step) {
+                    if !ctx.check_resolvent(&next_step.inner) {
                         continue;
                     }
-                    let resolvent_width = next_step.resolvent.literals.len();
+                    let resolvent_width = next_step.inner.resolvent.literals.len();
                     if resolvent_width >= ctx.stats.max_resolvent_width_seen {
                         ctx.stats.max_resolvent_width_seen = resolvent_width;
                     }
                     self.prove_all_recursive(
-                        next_step.resolvent.clone(),
+                        next_step.inner.resolvent.clone(),
                         knowledge,
                         ctx,
                         depth + 1,

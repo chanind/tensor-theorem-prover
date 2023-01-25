@@ -4,14 +4,10 @@ from typing import Iterable, Optional
 
 from tensor_theorem_prover.normalize import (
     Skolemizer,
-    CNFDisjunction,
     to_cnf,
 )
 from tensor_theorem_prover.prover.Proof import Proof
 from tensor_theorem_prover.prover.ProofStats import ProofStats
-from tensor_theorem_prover.prover.ProofContext import ProofContext
-from tensor_theorem_prover.prover.operations.resolve import resolve
-from tensor_theorem_prover.prover.ProofStep import ProofStep
 from tensor_theorem_prover.similarity import (
     SimilarityFunc,
     cosine_similarity,

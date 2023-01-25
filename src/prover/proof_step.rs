@@ -1,21 +1,20 @@
 use pyo3::prelude::*;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::types::{CNFDisjunction, CNFLiteral, Term, Variable};
 
 // TODO: should this use references?
 pub type SubstitutionsMap = HashMap<Variable, Term>;
 
-#[pyclass(name = "RsProofStepBox")]
 #[derive(Clone, PartialEq, Debug)]
-pub struct ProofStepBox {
-    pub inner: Box<ProofStep>,
+pub struct ProofStepNode {
+    pub inner: Arc<ProofStep>,
 }
-impl ProofStepBox {
+impl ProofStepNode {
     pub fn new(inner: ProofStep) -> Self {
         Self {
-            inner: Box::new(inner),
+            inner: Arc::new(inner),
         }
     }
 }
@@ -45,11 +44,9 @@ pub struct ProofStep {
     pub running_similarity: f64,
     #[pyo3(get)]
     pub depth: usize,
-    pub parent: Option<ProofStepBox>,
+    pub parent: Option<ProofStepNode>,
 }
-#[pymethods]
 impl ProofStep {
-    #[new]
     pub fn new(
         source: CNFDisjunction,
         target: CNFDisjunction,
@@ -61,7 +58,7 @@ impl ProofStep {
         similarity: f64,
         running_similarity: f64,
         depth: usize,
-        parent: Option<ProofStepBox>,
+        parent: Option<ProofStepNode>,
     ) -> ProofStep {
         ProofStep {
             source,
