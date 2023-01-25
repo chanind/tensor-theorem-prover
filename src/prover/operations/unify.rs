@@ -271,7 +271,7 @@ mod test {
         types::{Constant, Predicate},
     };
 
-    fn ctx() -> ProofContext<'static> {
+    fn ctx() -> ProofContext {
         ProofContext::new(0.5, None, true, None, Some(get_py_similarity_fn()))
     }
 
