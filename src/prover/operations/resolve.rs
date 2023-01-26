@@ -1,5 +1,5 @@
 use regex::Regex;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use std::collections::BTreeSet;
 
 use crate::{
@@ -111,14 +111,14 @@ fn build_resolvent(
         find_unused_variables(&source_literals, &unification.source_substitutions);
     let unused_target_vars =
         find_unused_variables(&target_literals, &unification.target_substitutions);
-    let all_vars = unused_source_vars
+    let mut all_vars = unused_source_vars
         .union(&unused_target_vars)
         .chain(unification.source_substitutions.keys())
         .chain(unification.target_substitutions.keys())
         .cloned()
-        .collect::<BTreeSet<_>>();
+        .collect::<FxHashSet<_>>();
     let rename_vars_map =
-        find_non_overlapping_var_names(&unused_source_vars, &unused_target_vars, &all_vars);
+        find_non_overlapping_var_names(&unused_source_vars, &unused_target_vars, &mut all_vars);
     let target_literals = rename_variables_in_literals(&target_literals, &rename_vars_map);
     let updated_source_literals =
         perform_substitution(&source_literals, &unification.source_substitutions);
@@ -139,8 +139,8 @@ fn build_resolvent(
 fn find_unused_variables(
     literals: &BTreeSet<PyArcItem<CNFLiteral>>,
     substitutions: &SubstitutionsMap,
-) -> BTreeSet<Variable> {
-    let mut unused_variables = BTreeSet::new();
+) -> FxHashSet<Variable> {
+    let mut unused_variables = FxHashSet::default();
     for literal in literals {
         for term in &literal.item.atom.terms {
             if let Term::Variable(var) = term {
@@ -155,11 +155,10 @@ fn find_unused_variables(
 
 /// Find new unused vars names for all overlapping variables between source and target
 fn find_non_overlapping_var_names(
-    source_vars: &BTreeSet<Variable>,
-    target_vars: &BTreeSet<Variable>,
-    all_variables: &BTreeSet<Variable>,
+    source_vars: &FxHashSet<Variable>,
+    target_vars: &FxHashSet<Variable>,
+    all_variables: &mut FxHashSet<Variable>,
 ) -> FxHashMap<Variable, Variable> {
-    let mut used_vars = all_variables.clone();
     let overlapping_variables = source_vars.intersection(target_vars);
     let mut renamed_vars = FxHashMap::default();
     for var in overlapping_variables {
@@ -168,8 +167,8 @@ fn find_non_overlapping_var_names(
         loop {
             counter += 1;
             let new_var = Variable::new(&format!("{}_{}", base_name, counter));
-            if !used_vars.contains(&new_var) {
-                used_vars.insert(new_var.clone());
+            if !all_variables.contains(&new_var) {
+                all_variables.insert(new_var.clone());
                 renamed_vars.insert(var.clone(), new_var);
                 break;
             }
@@ -273,11 +272,12 @@ fn literal_requires_substitution(
 #[cfg(test)]
 mod test {
 
+    use sugars::btset;
+
     use super::*;
-    use crate::fxmap;
     use crate::test_utils::test::{a, b, c, const1, const2, pred1, pred2, to_numpy_array, x, y, z};
     use crate::types::Predicate;
-    use sugars::btset;
+    use crate::{fxmap, fxset};
 
     #[test]
     fn test_find_unused_variables() {
@@ -287,54 +287,60 @@ mod test {
         };
         assert_eq!(
             find_unused_variables(&literals, &FxHashMap::default()),
-            btset! { x(), y() }
+            fxset! { x(), y() }
         );
         assert_eq!(
             find_unused_variables(&literals, &fxmap! { y() => const1().into() }),
-            btset! { x() }
+            fxset! { x() }
         );
         assert_eq!(
             find_unused_variables(
                 &literals,
                 &fxmap! { y() => const1().into(), x() => const2().into() }
             ),
-            btset! {}
+            fxset! {}
         );
     }
 
     #[test]
     fn test_find_non_overlapping_var_names_leaves_vars_unchanged_if_no_overlaps() {
-        let source_vars = btset! { x(), y(), z() };
-        let target_vars = btset! { a(), b(), c() };
-        let all_vars = source_vars.union(&target_vars).cloned().collect();
+        let source_vars = fxset! { x(), y(), z() };
+        let target_vars = fxset! { a(), b(), c() };
+        let mut all_vars = source_vars
+            .union(&target_vars)
+            .cloned()
+            .collect::<FxHashSet<_>>();
         assert_eq!(
-            find_non_overlapping_var_names(&source_vars, &target_vars, &all_vars),
+            find_non_overlapping_var_names(&source_vars, &target_vars, &mut all_vars),
             FxHashMap::default()
         );
     }
 
     #[test]
     fn test_find_non_overlapping_var_names_renames_vars_if_overlaps() {
-        let source_vars = btset! { x(), y(), z() };
-        let target_vars = btset! { a(), b(), x() };
-        let all_vars = source_vars.union(&target_vars).cloned().collect();
+        let source_vars = fxset! { x(), y(), z() };
+        let target_vars = fxset! { a(), b(), x() };
+        let mut all_vars = source_vars
+            .union(&target_vars)
+            .cloned()
+            .collect::<FxHashSet<_>>();
         assert_eq!(
-            find_non_overlapping_var_names(&source_vars, &target_vars, &all_vars),
+            find_non_overlapping_var_names(&source_vars, &target_vars, &mut all_vars),
             fxmap! { x() => Variable::new("X_1") }
         );
     }
 
     #[test]
     fn test_find_non_overlapping_keeps_iterating_var_names_until_a_non_bound_one_is_found() {
-        let source_vars = btset! { x(), y(), z() };
-        let target_vars = btset! { a(), b(), x() };
-        let all_vars = source_vars
+        let source_vars = fxset! { x(), y(), z() };
+        let target_vars = fxset! { a(), b(), x() };
+        let mut all_vars = source_vars
             .union(&target_vars)
             .cloned()
             .chain(btset! { Variable::new("X_1"), Variable::new("X_2") })
-            .collect();
+            .collect::<FxHashSet<_>>();
         assert_eq!(
-            find_non_overlapping_var_names(&source_vars, &target_vars, &all_vars),
+            find_non_overlapping_var_names(&source_vars, &target_vars, &mut all_vars),
             fxmap! { x() => Variable::new("X_3") }
         );
     }

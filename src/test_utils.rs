@@ -19,6 +19,19 @@ pub mod test {
         }};
     }
 
+    #[macro_export]
+    macro_rules! fxset {
+        () => { ::rustc_hash::FxHashSet::default() };
+
+        ( $($elem: expr),+ $(,)? ) => {{
+            let mut set = ::rustc_hash::FxHashSet::default();
+            $(
+                set.insert($elem);
+            )+
+            set
+        }};
+    }
+
     pub fn pred1() -> Predicate {
         Predicate::new("pred1", None)
     }
