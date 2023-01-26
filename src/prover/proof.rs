@@ -88,14 +88,14 @@ fn resolve_var_value(var: &Term, substitutions: &Vec<SubstitutionsMap>, index: u
         match new_var_value {
             Term::Variable(_) => resolve_var_value(new_var_value, substitutions, index + 1),
             Term::Constant(_) => new_var_value.clone(),
-            Term::BoundFunction(bound_function) => Term::BoundFunction(BoundFunction {
-                function: bound_function.function.clone(),
-                terms: bound_function
+            Term::BoundFunction(bound_function) => Term::BoundFunction(BoundFunction::new(
+                bound_function.function.clone(),
+                bound_function
                     .terms
                     .iter()
                     .map(|term| resolve_var_value(term, substitutions, index + 1))
                     .collect(),
-            }),
+            )),
         }
     } else {
         var.clone()

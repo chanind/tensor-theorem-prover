@@ -144,18 +144,28 @@ impl SimilarityComparable for Constant {
 }
 
 #[pyclass(name = "RsVariable")]
-#[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Variable {
     #[pyo3(get)]
     pub name: String,
+    hash: u64,
 }
 #[pymethods]
 impl Variable {
     #[new]
     pub fn new(name: &str) -> Self {
+        let mut hasher = FxHasher::default();
+        name.hash(&mut hasher);
+        let hash = hasher.finish();
         Self {
             name: name.to_string(),
+            hash,
         }
+    }
+}
+impl Hash for Variable {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_u64(self.hash);
     }
 }
 
@@ -175,26 +185,37 @@ impl Function {
     }
 
     pub fn bind(&self, terms: Vec<Term>) -> BoundFunction {
-        BoundFunction {
-            function: self.clone(),
-            terms,
-        }
+        BoundFunction::new(self.clone(), terms)
     }
 }
 
 #[pyclass(name = "RsBoundFunction")]
-#[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct BoundFunction {
     #[pyo3(get)]
     pub function: Function,
     #[pyo3(get)]
     pub terms: Vec<Term>,
+    hash: u64,
 }
 #[pymethods]
 impl BoundFunction {
     #[new]
     pub fn new(function: Function, terms: Vec<Term>) -> Self {
-        Self { function, terms }
+        let mut hasher = FxHasher::default();
+        function.hash(&mut hasher);
+        terms.hash(&mut hasher);
+        let hash = hasher.finish();
+        Self {
+            function,
+            terms,
+            hash,
+        }
+    }
+}
+impl Hash for BoundFunction {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_u64(self.hash);
     }
 }
 
