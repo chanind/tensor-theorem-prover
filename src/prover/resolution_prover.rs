@@ -42,7 +42,7 @@ impl ResolutionProverBackend {
             py_similarity_fn,
             min_similarity_threshold,
             similarity_cache: if cache_similarity {
-                Some(SimilarityCache::new())
+                Some(SimilarityCache::default())
             } else {
                 None
             },
@@ -101,7 +101,7 @@ impl ResolutionProverBackend {
 
     pub fn purge_similarity_cache(&mut self) {
         if let Some(_) = self.similarity_cache.as_mut() {
-            self.similarity_cache = Some(SimilarityCache::new());
+            self.similarity_cache = Some(SimilarityCache::default());
         }
     }
 

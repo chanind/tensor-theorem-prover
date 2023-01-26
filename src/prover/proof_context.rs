@@ -1,6 +1,5 @@
-use fxhash::FxHasher;
 use pyo3::prelude::*;
-use std::collections::HashMap;
+use rustc_hash::{FxHashMap, FxHasher};
 use std::hash::{Hash, Hasher};
 
 use crate::types::SimilarityComparable;
@@ -18,7 +17,7 @@ pub struct ProofContext {
     pub max_proofs: Option<usize>,
     scored_leaf_proof_steps: Vec<(f64, usize, ProofStepNode, ProofStats)>,
     skip_seen_resolvents: bool,
-    seen_resolvents: HashMap<u64, (usize, f64)>,
+    seen_resolvents: FxHashMap<u64, (usize, f64)>,
     similarity_cache: Option<SimilarityCache>,
     py_similarity_fn: Option<PyObject>,
 }
@@ -35,7 +34,7 @@ impl ProofContext {
             min_similarity_threshold: initial_min_similarity_threshold,
             max_proofs,
             scored_leaf_proof_steps: Vec::new(),
-            seen_resolvents: HashMap::new(),
+            seen_resolvents: FxHashMap::default(),
             skip_seen_resolvents,
             similarity_cache,
             py_similarity_fn,
@@ -106,25 +105,18 @@ impl ProofContext {
     where
         T: SimilarityComparable + IntoPy<PyObject> + Clone,
     {
-        let (src_sym, src_embed, src_embed_ptr) = source.similarity_fields();
-        let (tgt_sym, tgt_embed, tgt_embed_ptr) = target.similarity_fields();
-        let src_param = (src_sym, src_embed);
-        let tgt_param = (tgt_sym, tgt_embed);
+        let src_key = source.similarity_key();
+        let tgt_key = target.similarity_key();
+        let key = src_key ^ tgt_key;
         match self.similarity_cache.as_mut() {
             Some(cache) => {
-                let key = (
-                    src_param.0.clone(),
-                    src_embed_ptr.clone(),
-                    tgt_param.0.clone(),
-                    tgt_embed_ptr.clone(),
-                );
                 if let Some(similarity) = cache.get(&key) {
                     self.stats.similarity_cache_hits += 1;
                     *similarity
                 } else {
                     let similarity =
                         raw_calc_similarity(&self.py_similarity_fn, source.clone(), target.clone());
-                    cache.insert(key, similarity);
+                    cache.insert(key.clone(), similarity);
                     similarity
                 }
             }
@@ -159,17 +151,18 @@ where
 
 #[cfg(test)]
 mod test {
+    use rustc_hash::FxHashMap;
+
     use crate::prover::{ProofStep, ProofStepNode};
     use crate::types::{Atom, CNFDisjunction, CNFLiteral, Predicate};
     use crate::util::PyArcItem;
     use std::collections::BTreeSet;
-    use std::collections::HashMap;
 
     fn create_proof_step_node(depth: usize, running_similarity: f64) -> ProofStepNode {
         let pred = Predicate::new("Rust", None);
         let disj = PyArcItem::new(CNFDisjunction::new(BTreeSet::new()));
         let lit = PyArcItem::new(CNFLiteral::new(Atom::new(pred.clone(), vec![]), true));
-        let subs = HashMap::new();
+        let subs = FxHashMap::default();
         ProofStepNode::new(ProofStep::new(
             disj.clone(),
             disj.clone(),

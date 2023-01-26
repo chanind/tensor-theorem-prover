@@ -1,5 +1,6 @@
 use regex::Regex;
-use std::collections::{BTreeSet, HashMap};
+use rustc_hash::FxHashMap;
+use std::collections::BTreeSet;
 
 use crate::{
     prover::{proof_step::ProofStepNode, ProofContext, ProofStep, SubstitutionsMap},
@@ -157,10 +158,10 @@ fn find_non_overlapping_var_names(
     source_vars: &BTreeSet<Variable>,
     target_vars: &BTreeSet<Variable>,
     all_variables: &BTreeSet<Variable>,
-) -> HashMap<Variable, Variable> {
+) -> FxHashMap<Variable, Variable> {
     let mut used_vars = all_variables.clone();
     let overlapping_variables = source_vars.intersection(target_vars);
-    let mut renamed_vars = HashMap::new();
+    let mut renamed_vars = FxHashMap::default();
     for var in overlapping_variables {
         let base_name = VAR_NAME_REGEX.replace(&var.name, "");
         let mut counter = 0;
@@ -179,7 +180,7 @@ fn find_non_overlapping_var_names(
 
 fn rename_variables_in_literals(
     literals: &BTreeSet<PyArcItem<CNFLiteral>>,
-    rename_map: &HashMap<Variable, Variable>,
+    rename_map: &FxHashMap<Variable, Variable>,
 ) -> BTreeSet<PyArcItem<CNFLiteral>> {
     let mut new_literals = BTreeSet::new();
     for literal in literals {
@@ -211,7 +212,7 @@ fn rename_variables_in_literals(
 
 fn literal_requires_var_rename(
     literal: &PyArcItem<CNFLiteral>,
-    rename_map: &HashMap<Variable, Variable>,
+    rename_map: &FxHashMap<Variable, Variable>,
 ) -> bool {
     for term in &literal.item.atom.terms {
         if let Term::Variable(var) = term {
@@ -273,9 +274,10 @@ fn literal_requires_substitution(
 mod test {
 
     use super::*;
+    use crate::fxmap;
     use crate::test_utils::test::{a, b, c, const1, const2, pred1, pred2, to_numpy_array, x, y, z};
     use crate::types::Predicate;
-    use sugars::{btset, hmap};
+    use sugars::btset;
 
     #[test]
     fn test_find_unused_variables() {
@@ -284,17 +286,17 @@ mod test {
             PyArcItem::new(CNFLiteral::new(Atom::new(pred2(), vec![y().into()]), false)),
         };
         assert_eq!(
-            find_unused_variables(&literals, &HashMap::new()),
+            find_unused_variables(&literals, &FxHashMap::default()),
             btset! { x(), y() }
         );
         assert_eq!(
-            find_unused_variables(&literals, &hmap! { y() => const1().into() }),
+            find_unused_variables(&literals, &fxmap! { y() => const1().into() }),
             btset! { x() }
         );
         assert_eq!(
             find_unused_variables(
                 &literals,
-                &hmap! { y() => const1().into(), x() => const2().into() }
+                &fxmap! { y() => const1().into(), x() => const2().into() }
             ),
             btset! {}
         );
@@ -307,7 +309,7 @@ mod test {
         let all_vars = source_vars.union(&target_vars).cloned().collect();
         assert_eq!(
             find_non_overlapping_var_names(&source_vars, &target_vars, &all_vars),
-            HashMap::new()
+            FxHashMap::default()
         );
     }
 
@@ -318,7 +320,7 @@ mod test {
         let all_vars = source_vars.union(&target_vars).cloned().collect();
         assert_eq!(
             find_non_overlapping_var_names(&source_vars, &target_vars, &all_vars),
-            hmap! { x() => Variable::new("X_1") }
+            fxmap! { x() => Variable::new("X_1") }
         );
     }
 
@@ -333,7 +335,7 @@ mod test {
             .collect();
         assert_eq!(
             find_non_overlapping_var_names(&source_vars, &target_vars, &all_vars),
-            hmap! { x() => Variable::new("X_3") }
+            fxmap! { x() => Variable::new("X_3") }
         );
     }
 
@@ -343,7 +345,7 @@ mod test {
             PyArcItem::new(CNFLiteral::new(pred1().atom(vec![x().into(), const1().into()]), true)),
             PyArcItem::new(CNFLiteral::new(pred2().atom(vec![y().into()]), false)),
         };
-        let rename_vars_map = hmap! { x() => Variable::new("X_1"), y() => Variable::new("Y_1") };
+        let rename_vars_map = fxmap! { x() => Variable::new("X_1"), y() => Variable::new("Y_1") };
         let renamed_literals = rename_variables_in_literals(&literals, &rename_vars_map);
         assert_eq!(
             renamed_literals,
@@ -361,7 +363,7 @@ mod test {
             PyArcItem::new(CNFLiteral::new(pred2().atom(vec![y().into()]), false)),
         };
         let substitutions: SubstitutionsMap =
-            hmap! { x() => const2().into(), y() => const1().into() };
+            fxmap! { x() => const2().into(), y() => const1().into() };
         let substituted_literals = perform_substitution(&literals, &substitutions);
         assert_eq!(
             substituted_literals,
@@ -377,7 +379,7 @@ mod test {
         let literals = btset! {
             PyArcItem::new(CNFLiteral::new(pred1().atom(vec![x().into(), y().into()]), true)),
         };
-        let substitutions: SubstitutionsMap = hmap! { x() => y().into(), y() => const2().into() };
+        let substitutions: SubstitutionsMap = fxmap! { x() => y().into(), y() => const2().into() };
         let substituted_literals = perform_substitution(&literals, &substitutions);
         assert_eq!(
             substituted_literals,
@@ -410,8 +412,8 @@ mod test {
         let target_disjunction = PyArcItem::new(CNFDisjunction::new(target_literals));
         let unification = Unification {
             similarity: 1.0,
-            source_substitutions: hmap! { y() => const1().into() },
-            target_substitutions: hmap! { x() => const2().into() },
+            source_substitutions: fxmap! { y() => const1().into() },
+            target_substitutions: fxmap! { x() => const2().into() },
         };
         let resolvent = build_resolvent(
             &source_disjunction,
@@ -460,8 +462,8 @@ mod test {
         let target_disjunction = PyArcItem::new(CNFDisjunction::new(target_literals));
         let unification = Unification {
             similarity: 1.0,
-            source_substitutions: hmap! { y() => const1().into() },
-            target_substitutions: hmap! { x() => const2().into() },
+            source_substitutions: fxmap! { y() => const1().into() },
+            target_substitutions: fxmap! { x() => const2().into() },
         };
         let resolvent = build_resolvent(
             &source_disjunction,

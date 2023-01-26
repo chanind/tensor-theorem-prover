@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 use super::{ProofStats, ProofStep, SubstitutionsMap};
 use crate::types::{BoundFunction, CNFDisjunction, Term};
@@ -67,7 +67,7 @@ impl Proof {
             .iter()
             .map(|step| step.source_substitutions.clone())
             .collect::<Vec<SubstitutionsMap>>();
-        let mut substitutions: SubstitutionsMap = HashMap::new();
+        let mut substitutions: SubstitutionsMap = FxHashMap::default();
         for variable in goal_variables {
             substitutions.insert(
                 variable.clone(),

@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::AsPyPointer;
+use rustc_hash::FxHasher;
 use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::hash::Hash;
@@ -17,11 +18,8 @@ fn extract_embedding_ptr(embedding: &Option<Py<PyAny>>) -> Option<isize> {
 }
 
 pub trait SimilarityComparable {
-    fn similarity_fields(&self) -> (String, &Option<Py<PyAny>>, Option<isize>);
-
-    fn symbol(&self) -> String {
-        self.similarity_fields().0
-    }
+    fn similarity_key(&self) -> u64;
+    fn symbol(&self) -> &String;
 }
 
 #[pyclass(name = "RsPredicate")]
@@ -32,16 +30,22 @@ pub struct Predicate {
     #[pyo3(get)]
     pub embedding: Option<Py<PyAny>>,
     pub embedding_ptr: Option<isize>,
+    hash: u64,
 }
 #[pymethods]
 impl Predicate {
     #[new]
     pub fn new(symbol: &str, embedding: Option<Py<PyAny>>) -> Self {
         let embedding_ptr = extract_embedding_ptr(&embedding);
+        let mut hasher = FxHasher::default();
+        symbol.hash(&mut hasher);
+        embedding_ptr.hash(&mut hasher);
+        let hash = hasher.finish();
         Self {
             symbol: symbol.to_string(),
             embedding,
             embedding_ptr,
+            hash,
         }
     }
 
@@ -54,8 +58,7 @@ impl Predicate {
 }
 impl Hash for Predicate {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.symbol.hash(state);
-        self.embedding_ptr.hash(state);
+        state.write_u64(self.hash);
     }
 }
 impl Eq for Predicate {}
@@ -75,8 +78,11 @@ impl PartialOrd for Predicate {
     }
 }
 impl SimilarityComparable for Predicate {
-    fn similarity_fields(&self) -> (String, &Option<Py<PyAny>>, Option<isize>) {
-        (self.symbol.clone(), &self.embedding, self.embedding_ptr)
+    fn similarity_key(&self) -> u64 {
+        self.hash
+    }
+    fn symbol(&self) -> &String {
+        &self.symbol
     }
 }
 
@@ -88,23 +94,28 @@ pub struct Constant {
     #[pyo3(get)]
     pub embedding: Option<Py<PyAny>>,
     pub embedding_ptr: Option<isize>,
+    hash: u64,
 }
 #[pymethods]
 impl Constant {
     #[new]
     pub fn new(symbol: &str, embedding: Option<Py<PyAny>>) -> Self {
         let embedding_ptr = extract_embedding_ptr(&embedding);
+        let mut hasher = FxHasher::default();
+        symbol.hash(&mut hasher);
+        embedding_ptr.hash(&mut hasher);
+        let hash = hasher.finish();
         Self {
             symbol: symbol.to_string(),
             embedding,
             embedding_ptr,
+            hash,
         }
     }
 }
 impl Hash for Constant {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.symbol.hash(state);
-        self.embedding_ptr.hash(state);
+        state.write_u64(self.hash);
     }
 }
 impl Eq for Constant {}
@@ -124,8 +135,11 @@ impl PartialOrd for Constant {
     }
 }
 impl SimilarityComparable for Constant {
-    fn similarity_fields(&self) -> (String, &Option<Py<PyAny>>, Option<isize>) {
-        (self.symbol.clone(), &self.embedding, self.embedding_ptr)
+    fn similarity_key(&self) -> u64 {
+        self.hash
+    }
+    fn symbol(&self) -> &String {
+        &self.symbol
     }
 }
 

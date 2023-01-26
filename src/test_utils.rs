@@ -5,6 +5,20 @@ pub mod test {
 
     use crate::types::{Constant, Function, Predicate, Variable};
 
+    // based on sugar::hmap
+    #[macro_export]
+    macro_rules! fxmap {
+        () => { ::rustc_hash::FxHashMap::default() };
+
+        ( $($key: expr => $value: expr),+ $(,)? ) => {{
+                let mut map = ::rustc_hash::FxHashMap::default();
+                $(
+                    let _ = map.insert($key, $value);
+                )+
+                map
+        }};
+    }
+
     pub fn pred1() -> Predicate {
         Predicate::new("pred1", None)
     }

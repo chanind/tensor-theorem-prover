@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 use crate::prover::{ProofContext, SubstitutionsMap};
 use crate::types::{Atom, Term};
@@ -49,7 +49,7 @@ impl LabeledTerm {
 // I want to also create something like a LabeledVariable, which is a LabeledTerm but with Term::Variable as the term type
 // but can't figure out how to do that or if it's even possible
 // Ideally, this should be HashMap<LabeledVariable, LabeledTerm> but I can't figure out how to do that
-type SubstitutionSet = HashMap<LabeledTerm, LabeledTerm>;
+type SubstitutionSet = FxHashMap<LabeledTerm, LabeledTerm>;
 
 /// Unification with optional vector similarity, based on Robinson's 1965 algorithm, as described in:
 /// "Comparing unification algorithms in first-order theorem proving", Hoder et al. 2009
@@ -61,7 +61,7 @@ fn unify_terms(
     ctx: &mut ProofContext,
 ) -> Option<Unification> {
     let mut cur_similarity = similarity;
-    let mut substitutions: SubstitutionSet = HashMap::new();
+    let mut substitutions: SubstitutionSet = FxHashMap::default();
     for (source_term, target_term) in source_terms.iter().zip(target_terms.iter()) {
         let new_similarity = unify_term_pair(
             source_term,
@@ -73,8 +73,8 @@ fn unify_terms(
         cur_similarity = new_similarity?;
     }
 
-    let mut source_substitutions: SubstitutionsMap = HashMap::new();
-    let mut target_substitutions: SubstitutionsMap = HashMap::new();
+    let mut source_substitutions: SubstitutionsMap = FxHashMap::default();
+    let mut target_substitutions: SubstitutionsMap = FxHashMap::default();
     for labeled_var in substitutions.keys() {
         let resolved_labeled_term = _resolve_labeled_term(labeled_var, &substitutions);
         match &labeled_var.term {
@@ -262,7 +262,10 @@ fn unify_term_pair(
 #[cfg(test)]
 mod test {
 
+    use rustc_hash::FxHashMap;
+
     use super::*;
+    use crate::fxmap;
     use crate::test_utils::test::{
         const1, const2, func1, func2, get_py_similarity_fn, pred1, pred2, to_numpy_array, x, y, z,
     };
@@ -282,8 +285,8 @@ mod test {
         assert_eq!(
             unify(&source, &target, &mut ctx()).unwrap(),
             Unification {
-                source_substitutions: HashMap::new(),
-                target_substitutions: HashMap::new(),
+                source_substitutions: FxHashMap::default(),
+                target_substitutions: FxHashMap::default(),
                 similarity: 1.0
             }
         );
@@ -329,8 +332,8 @@ mod test {
         let source = pred1().atom(vec![x().into(), const1().into()]);
         let target = pred1().atom(vec![const2().into(), const1().into()]);
         let expected_unification = Unification {
-            source_substitutions: HashMap::from([(x(), const2().into())]),
-            target_substitutions: HashMap::new(),
+            source_substitutions: fxmap! { x() => const2().into() },
+            target_substitutions: FxHashMap::default(),
             similarity: 1.0,
         };
         assert_eq!(
@@ -344,8 +347,8 @@ mod test {
         let source = pred1().atom(vec![const2().into(), const1().into()]);
         let target = pred1().atom(vec![x().into(), const1().into()]);
         let expected_unification = Unification {
-            source_substitutions: HashMap::new(),
-            target_substitutions: HashMap::from([(x(), const2().into())]),
+            source_substitutions: FxHashMap::default(),
+            target_substitutions: fxmap! { x() => const2().into() },
             similarity: 1.0,
         };
         assert_eq!(
@@ -359,8 +362,8 @@ mod test {
         let source = pred1().atom(vec![x().into(), const1().into()]);
         let target = pred1().atom(vec![y().into(), const1().into()]);
         let expected_unification = Unification {
-            source_substitutions: HashMap::new(),
-            target_substitutions: HashMap::from([(y(), x().into())]),
+            source_substitutions: FxHashMap::default(),
+            target_substitutions: fxmap! { y() => x().into() },
             similarity: 1.0,
         };
         assert_eq!(
@@ -374,8 +377,8 @@ mod test {
         let source = pred1().atom(vec![x().into(), x().into()]);
         let target = pred1().atom(vec![y().into(), const1().into()]);
         let expected_unification = Unification {
-            source_substitutions: HashMap::from([(x(), const1().into())]),
-            target_substitutions: HashMap::from([(y(), const1().into())]),
+            source_substitutions: fxmap! { x() => const1().into() },
+            target_substitutions: fxmap! { y() => const1().into() },
             similarity: 1.0,
         };
         assert_eq!(
@@ -389,8 +392,8 @@ mod test {
         let source = pred1().atom(vec![x().into(), const1().into()]);
         let target = pred1().atom(vec![y().into(), y().into()]);
         let expected_unification = Unification {
-            source_substitutions: HashMap::from([(x(), const1().into())]),
-            target_substitutions: HashMap::from([(y(), const1().into())]),
+            source_substitutions: fxmap! { x() => const1().into() },
+            target_substitutions: fxmap! { y() => const1().into() },
             similarity: 1.0,
         };
         assert_eq!(
@@ -416,8 +419,8 @@ mod test {
             const1().into(),
         ]);
         let expected_unification = Unification {
-            source_substitutions: HashMap::from([(x(), const1().into())]),
-            target_substitutions: HashMap::from([(y(), const1().into()), (z(), const1().into())]),
+            source_substitutions: fxmap! { x() => const1().into() },
+            target_substitutions: fxmap! { y() => const1().into(), z() => const1().into() },
             similarity: 1.0,
         };
         assert_eq!(
@@ -445,16 +448,8 @@ mod test {
             const2().into(),
         ]);
         let expected_unification = Unification {
-            source_substitutions: HashMap::from([
-                (x(), const2().into()),
-                (y(), const2().into()),
-                (z(), const2().into()),
-            ]),
-            target_substitutions: HashMap::from([
-                (x(), const2().into()),
-                (y(), const2().into()),
-                (z(), const2().into()),
-            ]),
+            source_substitutions: fxmap! { x() => const2().into(), y() => const2().into(), z() => const2().into() },
+            target_substitutions: fxmap! { x() => const2().into(), y() => const2().into(), z() => const2().into() },
             similarity: 1.0,
         };
         assert_eq!(
@@ -468,8 +463,8 @@ mod test {
         let source = pred1().atom(vec![func1().bind(vec![x().into()]).into()]);
         let target = pred1().atom(vec![func1().bind(vec![const1().into()]).into()]);
         let expected_unification = Unification {
-            source_substitutions: HashMap::from([(x(), const1().into())]),
-            target_substitutions: HashMap::new(),
+            source_substitutions: fxmap! { x() => const1().into() },
+            target_substitutions: FxHashMap::default(),
             similarity: 1.0,
         };
         assert_eq!(
@@ -483,8 +478,8 @@ mod test {
         let source = pred1().atom(vec![func1().bind(vec![x().into()]).into()]);
         let target = pred1().atom(vec![func1().bind(vec![y().into()]).into()]);
         let expected_unification = Unification {
-            source_substitutions: HashMap::new(),
-            target_substitutions: HashMap::from([(y(), x().into())]),
+            source_substitutions: FxHashMap::default(),
+            target_substitutions: fxmap! { y() => x().into() },
             similarity: 1.0,
         };
         assert_eq!(
@@ -498,8 +493,8 @@ mod test {
         let source = pred1().atom(vec![func1().bind(vec![x().into(), x().into()]).into()]);
         let target = pred1().atom(vec![func1().bind(vec![const1().into(), y().into()]).into()]);
         let expected_unification = Unification {
-            source_substitutions: HashMap::from([(x(), const1().into())]),
-            target_substitutions: HashMap::from([(y(), const1().into())]),
+            source_substitutions: fxmap! { x() => const1().into() },
+            target_substitutions: fxmap! { y() => const1().into() },
             similarity: 1.0,
         };
         assert_eq!(
@@ -513,8 +508,8 @@ mod test {
         let source = pred1().atom(vec![func1().bind(vec![const1().into(), y().into()]).into()]);
         let target = pred1().atom(vec![func1().bind(vec![x().into(), x().into()]).into()]);
         let expected_unification = Unification {
-            source_substitutions: HashMap::from([(y(), const1().into())]),
-            target_substitutions: HashMap::from([(x(), const1().into())]),
+            source_substitutions: fxmap! { y() => const1().into() },
+            target_substitutions: fxmap! { x() => const1().into() },
             similarity: 1.0,
         };
         assert_eq!(
@@ -530,11 +525,8 @@ mod test {
             .bind(vec![func2().bind(vec![const1().into()]).into()])
             .into()]);
         let expected_unification = Unification {
-            source_substitutions: HashMap::from([(
-                x(),
-                func2().bind(vec![const1().into()]).into(),
-            )]),
-            target_substitutions: HashMap::new(),
+            source_substitutions: fxmap! { x() => func2().bind(vec![const1().into()]).into() },
+            target_substitutions: FxHashMap::default(),
             similarity: 1.0,
         };
         assert_eq!(
@@ -561,9 +553,9 @@ mod test {
         let unification = unify(&source, &target, &mut ctx()).unwrap();
         assert_eq!(
             unification.source_substitutions,
-            HashMap::from([(x(), const1().into())])
+            fxmap! { x() => const1().into() }
         );
-        assert_eq!(unification.target_substitutions, HashMap::new());
+        assert_eq!(unification.target_substitutions, FxHashMap::default());
         assert!(unification.similarity > 0.9 && unification.similarity < 1.0);
     }
 
@@ -587,8 +579,8 @@ mod test {
         let source = pred1().atom(vec![vec_const1.into()]);
         let target = pred1().atom(vec![vec_const2.into()]);
         let unification = unify(&source, &target, &mut ctx()).unwrap();
-        assert_eq!(unification.source_substitutions, HashMap::new());
-        assert_eq!(unification.target_substitutions, HashMap::new());
+        assert_eq!(unification.source_substitutions, FxHashMap::default());
+        assert_eq!(unification.target_substitutions, FxHashMap::default());
         assert!(unification.similarity > 0.9 && unification.similarity < 1.0);
     }
 

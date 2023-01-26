@@ -1,3 +1,3 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
-pub type SimilarityCache = HashMap<(String, Option<isize>, String, Option<isize>), f64>;
+pub type SimilarityCache = FxHashMap<u64, f64>;

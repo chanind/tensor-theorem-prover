@@ -1,6 +1,7 @@
 use pyo3::prelude::*;
+use rustc_hash::FxHashMap;
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     types::{CNFDisjunction, CNFLiteral, Term, Variable},
@@ -8,7 +9,7 @@ use crate::{
 };
 
 // TODO: should this use references?
-pub type SubstitutionsMap = HashMap<Variable, Term>;
+pub type SubstitutionsMap = FxHashMap<Variable, Term>;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ProofStepNode {
