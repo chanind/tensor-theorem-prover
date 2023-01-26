@@ -12,6 +12,8 @@ jobs:
         uses: snok/install-poetry@v1
       - name: Install dependencies
         run: poetry install --no-interaction
+      - name: build pyo3
+        run: poetry run maturin develop
       - name: flake8 linting
         run: poetry run flake8 .
       - name: black code formatting
@@ -47,7 +49,7 @@ jobs:
           args: --release --out dist --sdist -m Cargo.toml
       - name: Install built wheel - x86_64
         run: |
-          pip install crfs --no-index --find-links dist --force-reinstall
+          pip install tensor_theorem_prover --no-index --find-links dist --force-reinstall
           python -c "import tensor_theorem_prover._rust"
       - name: Build wheels - universal2
         uses: PyO3/maturin-action@v1
@@ -55,7 +57,7 @@ jobs:
           args: --release --universal2 --out dist -m Cargo.toml
       - name: Install built wheel - universal2
         run: |
-          pip install crfs --no-index --find-links dist --force-reinstall
+          pip install tensor_theorem_prover --no-index --find-links dist --force-reinstall
           python -c "import tensor_theorem_prover._rust"
       - name: Upload wheels
         uses: actions/upload-artifact@v3
@@ -82,7 +84,7 @@ jobs:
           args: --release --out dist -m Cargo.toml
       - name: Install built wheel
         run: |
-          pip install crfs --no-index --find-links dist --force-reinstall
+          pip install tensor_theorem_prover --no-index --find-links dist --force-reinstall
           python -c "import tensor_theorem_prover._rust"
       - name: Upload wheels
         uses: actions/upload-artifact@v3
@@ -110,7 +112,7 @@ jobs:
       - name: Install built wheel
         if: matrix.target == 'x86_64'
         run: |
-          pip install crfs --no-index --find-links dist --force-reinstall
+          pip install tensor_theorem_prover --no-index --find-links dist --force-reinstall
           python -c "import tensor_theorem_prover._rust"
       - name: Upload wheels
         uses: actions/upload-artifact@v3
