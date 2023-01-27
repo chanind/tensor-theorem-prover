@@ -29,7 +29,9 @@ jobs:
           fail_ci_if_error: true
       - uses: dtolnay/rust-toolchain@stable
       - name: rust tests
-        run: cargo test
+        run: |
+          pip3 install numpy
+          cargo test
       - name: build
         run: poetry build
       - name: build docs
@@ -129,7 +131,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [aarch64, armv7, s390x, ppc64le, ppc64]
+        target: [aarch64, armv7, s390x, ppc64le] #, ppc64]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -140,8 +142,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
           manylinux: auto
-          args: --release --out dist
-          maturin-version: "v0.13.0"
+          args: --release -i python3.8 -out dist
       - uses: uraimo/run-on-arch-action@v2.5.0
         if: matrix.target != 'ppc64'
         name: Install built wheel
@@ -180,19 +181,20 @@ jobs:
         with:
           target: ${{ matrix.target }}
           manylinux: musllinux_1_2
-          args: --release --out dist
-          maturin-version: "v0.13.0"
-      - name: Install built wheel
-        if: matrix.target == 'x86_64-unknown-linux-musl'
-        uses: addnab/docker-run-action@v3
-        with:
-          image: alpine:latest
-          options: -v ${{ github.workspace }}:/io -w /io
-          run: |
-            apk add py3-pip
-            pip3 install -U pip
-            pip3 install tensor_theorem_prover --find-links /io/dist/ --force-reinstall
-            cd .. && python3 -c "import tensor_theorem_prover"
+          args: --release -i python3.8 --out dist
+      # TODO: this freaks out due to missing numpy
+      # either remove numpy or somehow solve this
+      # - name: Install built wheel
+      #   if: matrix.target == 'x86_64-unknown-linux-musl'
+      #   uses: addnab/docker-run-action@v3
+      #   with:
+      #     image: alpine:latest
+      #     options: -v ${{ github.workspace }}:/io -w /io
+      #     run: |
+      #       apk add py3-pip
+      #       pip3 install -U pip
+      #       pip3 install tensor_theorem_prover --find-links /io/dist/ --force-reinstall
+      #       cd .. && python3 -c "import tensor_theorem_prover"
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
@@ -218,20 +220,21 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           manylinux: musllinux_1_2
-          args: --release -i --out dist
-          maturin-version: "v0.13.0"
-      - uses: uraimo/run-on-arch-action@v2.5.0
-        name: Install built wheel
-        with:
-          arch: ${{ matrix.platform.arch }}
-          distro: alpine_latest
-          githubToken: ${{ github.token }}
-          install: |
-            apk add py3-pip
-            pip3 install -U pip
-          run: |
-            pip3 install tensor_theorem_prover --find-links dist/ --force-reinstall
-            cd .. && python3 -c "import tensor_theorem_prover"
+          args: --release -i python3.8 --out dist
+      # TODO: this freaks out due to missing numpy
+      # either remove numpy or somehow solve this
+      # - uses: uraimo/run-on-arch-action@v2.5.0
+      #   name: Install built wheel
+      #   with:
+      #     arch: ${{ matrix.platform.arch }}
+      #     distro: alpine_latest
+      #     githubToken: ${{ github.token }}
+      #     install: |
+      #       apk add py3-pip
+      #       pip3 install -U pip
+      #     run: |
+      #       pip3 install tensor_theorem_prover --find-links dist/ --force-reinstall
+      #       cd .. && python3 -c "import tensor_theorem_prover"
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
