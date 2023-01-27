@@ -2,6 +2,9 @@
 
 <!--next-version-placeholder-->
 
+## v0.13.0 (2023-01-27)
+
+
 ## v0.12.0 (2023-01-09)
 ### Feature
 * Adding options to skip finding best proof, and abort early ([`ed23460`](https://github.com/chanind/tensor-theorem-prover/commit/ed23460995043317ccdce13c3bac66eb0b796a43))
