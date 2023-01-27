@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tensor-theorem-prover"
-version = "0.12.0"
+version = "0.12.1a0"
 description = "Customizable first-order logic theorem prover supporting approximate vector similarity in unification"
 license = "MIT"
 readme = "README.md"
@@ -10,6 +10,13 @@ keywords = ["theorem-proving", "logic", "first-order", "unification", "reasoning
 
 [project]
 name = "tensor-theorem-prover"
+version = "0.12.1a0"
+description = "Customizable first-order logic theorem prover supporting approximate vector similarity in unification"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/chanind/tensor-theorem-prover"
+authors = ["David Chanin <chanindav@gmail.com>"]
+keywords = ["theorem-proving", "logic", "first-order", "unification", "reasoning"]
 dependencies = [
     'numpy >= 1.20.0, < 2',
 ]
