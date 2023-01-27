@@ -248,7 +248,7 @@ checksum = "9410d0f6853b1d94f0e519fb95df60f29d2c1eff2d921ffdf01a4c8a3b54f12d"
 
 [[package]]
 name = "tensor_theorem_prover"
-version = "0.12.0"
+version = "0.13.1"
 dependencies = [
  "lazy_static",
  "pyo3",

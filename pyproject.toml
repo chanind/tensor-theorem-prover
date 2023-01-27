@@ -43,12 +43,13 @@ build-backend = "maturin"
 [tool.semantic_release]
 version_variable = [
     "tensor_theorem_prover/__init__.py:__version__",
-    "pyproject.toml:version"
+    "pyproject.toml:version",
+    "Cargo.toml:version",
 ]
 branch = "main"
 upload_to_pypi = false
 upload_to_release = true
-build_command = "echo 'skipping build'"
+build_command = "mkdir dist"
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
