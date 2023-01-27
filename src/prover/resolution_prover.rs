@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 use pyo3::prelude::*;
 
@@ -19,7 +19,7 @@ pub struct ResolutionProverBackend {
     similarity_cache: Option<SimilarityCache>,
     skip_seen_resolvents: bool,
     find_highest_similarity_proofs: bool,
-    base_knowledge: HashSet<PyArcItem<CNFDisjunction>>,
+    base_knowledge: BTreeSet<PyArcItem<CNFDisjunction>>,
 }
 #[pymethods]
 impl ResolutionProverBackend {
@@ -33,7 +33,7 @@ impl ResolutionProverBackend {
         cache_similarity: bool,
         skip_seen_resolvents: bool,
         find_highest_similarity_proofs: bool,
-        base_knowledge: HashSet<PyArcItem<CNFDisjunction>>,
+        base_knowledge: BTreeSet<PyArcItem<CNFDisjunction>>,
     ) -> Self {
         Self {
             max_proof_depth,
@@ -52,7 +52,7 @@ impl ResolutionProverBackend {
         }
     }
 
-    pub fn extend_knowledge(&mut self, knowledge: HashSet<CNFDisjunction>) {
+    pub fn extend_knowledge(&mut self, knowledge: BTreeSet<CNFDisjunction>) {
         self.base_knowledge.extend(knowledge_to_arc(knowledge));
     }
 
@@ -60,8 +60,8 @@ impl ResolutionProverBackend {
     /// Return the proofs and the stats for the proof search.
     pub fn prove_all_with_stats(
         &self,
-        inverted_goals: HashSet<CNFDisjunction>,
-        extra_knowledge: Option<HashSet<CNFDisjunction>>,
+        inverted_goals: BTreeSet<CNFDisjunction>,
+        extra_knowledge: Option<BTreeSet<CNFDisjunction>>,
         max_proofs: Option<usize>,
         skip_seen_resolvents: Option<bool>,
     ) -> (Vec<Proof>, ProofStats) {
@@ -106,7 +106,7 @@ impl ResolutionProverBackend {
     }
 
     pub fn reset(&mut self) {
-        self.base_knowledge = HashSet::new();
+        self.base_knowledge = BTreeSet::new();
         self.purge_similarity_cache();
     }
 }
@@ -115,7 +115,7 @@ impl ResolutionProverBackend {
     fn prove_all_recursive(
         &self,
         goal: PyArcItem<CNFDisjunction>,
-        knowledge: &HashSet<PyArcItem<CNFDisjunction>>,
+        knowledge: &BTreeSet<PyArcItem<CNFDisjunction>>,
         ctx: &mut ProofContext,
         depth: usize,
         parent_state: Option<ProofStepNode>,
@@ -177,7 +177,7 @@ impl ResolutionProverBackend {
     }
 }
 
-fn knowledge_to_arc(knowledge: HashSet<CNFDisjunction>) -> HashSet<PyArcItem<CNFDisjunction>> {
+fn knowledge_to_arc(knowledge: BTreeSet<CNFDisjunction>) -> BTreeSet<PyArcItem<CNFDisjunction>> {
     knowledge
         .into_iter()
         .map(|x| PyArcItem::new(x.clone()))
