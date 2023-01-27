@@ -27,6 +27,9 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
           files: ./coverage.xml
           fail_ci_if_error: true
+      - uses: dtolnay/rust-toolchain@stable
+      - name: rust tests
+        run: cargo test
       - name: build
         run: poetry build
       - name: build docs
@@ -137,7 +140,8 @@ jobs:
         with:
           target: ${{ matrix.target }}
           manylinux: auto
-          args: --release -i python3.8 --out dist
+          args: --release --out dist
+          maturin-version: "v0.13.0"
       - uses: uraimo/run-on-arch-action@v2.5.0
         if: matrix.target != 'ppc64'
         name: Install built wheel
@@ -176,7 +180,8 @@ jobs:
         with:
           target: ${{ matrix.target }}
           manylinux: musllinux_1_2
-          args: --release -i python3.8 --out dist
+          args: --release --out dist
+          maturin-version: "v0.13.0"
       - name: Install built wheel
         if: matrix.target == 'x86_64-unknown-linux-musl'
         uses: addnab/docker-run-action@v3
@@ -213,7 +218,8 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           manylinux: musllinux_1_2
-          args: --release -i python3.8 --out dist
+          args: --release -i --out dist
+          maturin-version: "v0.13.0"
       - uses: uraimo/run-on-arch-action@v2.5.0
         name: Install built wheel
         with:
