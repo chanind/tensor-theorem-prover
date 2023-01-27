@@ -1,6 +1,6 @@
 [package]
 name = "tensor_theorem_prover"
-version = "0.13.2"
+version = "0.13.3"
 edition = "2021"
 
 [lib]

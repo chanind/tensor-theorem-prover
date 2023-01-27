@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.13.3 (2023-01-27)
+### Fix
+* Bump for deploy ([`65839da`](https://github.com/chanind/tensor-theorem-prover/commit/65839da18e7fedf3c562218aef325d6498ce2755))
+
 ## v0.13.2 (2023-01-27)
 ### Fix
 * Try creating an empty dist/ during semantic release ([`8e79326`](https://github.com/chanind/tensor-theorem-prover/commit/8e793264b69bc33b8f0f842016983866adb0b6bd))
