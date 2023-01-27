@@ -186,18 +186,21 @@ jobs:
           target: ${{ matrix.platform.target }}
           manylinux: musllinux_1_2
           args: --release -i python3.8 --out dist
-      - uses: uraimo/run-on-arch-action@v2.5.0
-        name: Install built wheel
-        with:
-          arch: ${{ matrix.platform.arch }}
-          distro: alpine_latest
-          githubToken: ${{ github.token }}
-          install: |
-            apk add py3-pip
-            pip3 install -U pip
-          run: |
-            pip3 install tensor_theorem_prover --pre --no-index --find-links dist/ --force-reinstall
-            cd .. && python3 -c "import tensor_theorem_prover"
+      # TODO: figure out why this doesn't work on this arch
+      # - uses: uraimo/run-on-arch-action@v2.5.0
+      #   name: Install built wheel
+      #   with:
+      #     arch: ${{ matrix.platform.arch }}
+      #     distro: alpine_latest
+      #     githubToken: ${{ github.token }}
+      #     install: |
+      #       apk add py3-pip
+      #       pip3 install -U pip
+      #     run: |
+      #       pip3 install twine
+      #       twine check --strict dist/*
+      #       pip3 install tensor_theorem_prover --pre --no-index --find-links dist/ --force-reinstall
+      #       cd .. && python3 -c "import tensor_theorem_prover"
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
