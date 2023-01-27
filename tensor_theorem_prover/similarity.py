@@ -1,7 +1,15 @@
 from __future__ import annotations
 from typing import Callable, Iterable, Union
-import numpy as np
-from numpy.linalg import norm
+
+# optional dependency numpy
+try:
+    import numpy as np
+    from numpy.linalg import norm
+
+    has_numpy = True
+except ImportError:
+    has_numpy = False
+
 
 from tensor_theorem_prover.types.Constant import Constant
 from tensor_theorem_prover.types.Predicate import Predicate
@@ -28,6 +36,8 @@ def cosine_similarity(
     """
     if item1.embedding is None or item2.embedding is None:
         return symbol_compare(item1, item2)
+    if not has_numpy:
+        raise ImportError("cosine_similarity requires numpy, but it is not installed")
     return np.dot(item1.embedding, item2.embedding) / (
         norm(item1.embedding) * norm(item2.embedding)
     )
