@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.13.2 (2023-01-27)
+### Fix
+* Try creating an empty dist/ during semantic release ([`8e79326`](https://github.com/chanind/tensor-theorem-prover/commit/8e793264b69bc33b8f0f842016983866adb0b6bd))
+
 ## v0.13.1 (2023-01-27)
 ### Fix
 * Tweak job syntax to run on all tags ([`36089b1`](https://github.com/chanind/tensor-theorem-prover/commit/36089b19361a4e24890e3b074ec10890fccb47fb))
