@@ -1,5 +1,9 @@
 name: CI
-on: [push, pull_request]
+on:
+  push:
+    tags:
+      - "v*"
+    branches: "*"
 jobs:
   lint_test_and_build:
     runs-on: ubuntu-latest
@@ -207,7 +211,7 @@ jobs:
           name: wheels
           path: dist
 
-  release:
+  tag_release:
     needs:
       - lint_test_and_build
       - windows
@@ -221,14 +225,31 @@ jobs:
     concurrency: release
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
-        with:
-          name: wheels
       - name: Semantic Release
         # uses: relekang/python-semantic-release@v7.28.1
         # temp fix until https://github.com/relekang/python-semantic-release/pull/472 is fixed
         uses: chanind/python-semantic-release@7-28-1-packaging-fix
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          repository_username: __token__
-          repository_password: ${{ secrets.PYPI_TOKEN }}
+
+  deploy_release:
+    needs:
+      - lint_test_and_build
+      - windows
+      - macos
+      - linux
+      - musllinux
+      - musllinux-cross
+    if: startsWith(github.event.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+      - uses: actions/download-artifact@v3
+        with:
+          name: wheels
+      - name: push to pypi
+        run: |
+          pip install poetry
+          poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
+          poetry publish
