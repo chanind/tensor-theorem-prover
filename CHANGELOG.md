@@ -3,6 +3,10 @@
 <!--next-version-placeholder-->
 
 ## v0.13.0 (2023-01-27)
+### Feature
+* Ignore build step in semantic-release ([`0ed0c35`](https://github.com/chanind/tensor-theorem-prover/commit/0ed0c358c742853dc31ecf450bd7816e9a2d7a39))
+
+## v0.13.0 (2023-01-27)
 
 
 ## v0.12.0 (2023-01-09)
