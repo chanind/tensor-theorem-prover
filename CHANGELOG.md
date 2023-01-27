@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.13.4 (2023-01-27)
+### Fix
+* Bump for deploy ([`22c2582`](https://github.com/chanind/tensor-theorem-prover/commit/22c2582819b1b455e8cefc3e0db283477c38d466))
+
 ## v0.13.3 (2023-01-27)
 ### Fix
 * Bump for deploy ([`65839da`](https://github.com/chanind/tensor-theorem-prover/commit/65839da18e7fedf3c562218aef325d6498ce2755))
