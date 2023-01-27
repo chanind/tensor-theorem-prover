@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.13.8 (2023-01-27)
+### Fix
+* Improving consistency on identical runs ([#5](https://github.com/chanind/tensor-theorem-prover/issues/5)) ([`5a23ca5`](https://github.com/chanind/tensor-theorem-prover/commit/5a23ca51d14c9ffafaf9ce0dc169159f38145ae9))
+
 ## v0.13.7 (2023-01-27)
 ### Fix
 * Trying a different method to skip buiding the release commit ([`44c2523`](https://github.com/chanind/tensor-theorem-prover/commit/44c2523f6be1ead4c28c05120caa73a3c57f7616))
