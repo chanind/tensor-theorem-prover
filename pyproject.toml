@@ -8,6 +8,12 @@ repository = "https://github.com/chanind/tensor-theorem-prover"
 authors = ["David Chanin <chanindav@gmail.com>"]
 keywords = ["theorem-proving", "logic", "first-order", "unification", "reasoning"]
 
+[project]
+name = "tensor-theorem-prover"
+dependencies = [
+    'numpy >= 1.20.0, < 2',
+]
+
 [tool.poetry.dependencies]
 python = ">=3.8.1, <4.0"
 numpy = "^1.20.0"
