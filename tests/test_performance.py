@@ -122,12 +122,12 @@ def test_performance_with_mixed_amr_reasoner_batch() -> None:
     start = time.time()
     total_proofs = 0
     all_knowledge = []
-    for sample in batch[0:8]:
+    for sample in batch[0:10]:
         all_knowledge.extend(sample["knowledge"])
     prover = ResolutionProver(
         knowledge=all_knowledge,
         similarity_func=max_similarity([cosine_similarity, partial_symbol_compare]),
-        max_proof_depth=10,
+        max_proof_depth=12,
         max_resolvent_width=6,
         min_similarity_threshold=0.5,
         skip_seen_resolvents=True,
