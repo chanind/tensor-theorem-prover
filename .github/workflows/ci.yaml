@@ -146,19 +146,20 @@ jobs:
           target: ${{ matrix.target }}
           manylinux: musllinux_1_2
           args: --release -i python3.8 --out dist
-      # TODO: this freaks out due to missing numpy
-      # either remove numpy or somehow solve this
-      # - name: Install built wheel
-      #   if: matrix.target == 'x86_64-unknown-linux-musl'
-      #   uses: addnab/docker-run-action@v3
-      #   with:
-      #     image: alpine:latest
-      #     options: -v ${{ github.workspace }}:/io -w /io
-      #     run: |
-      #       apk add py3-pip
-      #       pip3 install -U pip
-      #       pip3 install tensor_theorem_prover --find-links /io/dist/ --force-reinstall
-      #       cd .. && python3 -c "import tensor_theorem_prover"
+      - name: Install built wheel
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        uses: addnab/docker-run-action@v3
+        with:
+          image: alpine:latest
+          options: -v ${{ github.workspace }}:/io -w /io
+          run: |
+            apk add py3-pip
+            pip3 install -U pip
+            pip3 install twine
+            twine check --strict dist/*
+            # TODO: figure out why this doesn't work
+            # pip3 install tensor_theorem_prover --pre --no-index --find-links /io/dist/ --force-reinstall
+            # cd .. && python3 -c "import tensor_theorem_prover"
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
@@ -185,20 +186,18 @@ jobs:
           target: ${{ matrix.platform.target }}
           manylinux: musllinux_1_2
           args: --release -i python3.8 --out dist
-      # TODO: this freaks out due to missing numpy
-      # either remove numpy or somehow solve this
-      # - uses: uraimo/run-on-arch-action@v2.5.0
-      #   name: Install built wheel
-      #   with:
-      #     arch: ${{ matrix.platform.arch }}
-      #     distro: alpine_latest
-      #     githubToken: ${{ github.token }}
-      #     install: |
-      #       apk add py3-pip
-      #       pip3 install -U pip
-      #     run: |
-      #       pip3 install tensor_theorem_prover --no-index --find-links dist/ --force-reinstall
-      #       cd .. && python3 -c "import tensor_theorem_prover"
+      - uses: uraimo/run-on-arch-action@v2.5.0
+        name: Install built wheel
+        with:
+          arch: ${{ matrix.platform.arch }}
+          distro: alpine_latest
+          githubToken: ${{ github.token }}
+          install: |
+            apk add py3-pip
+            pip3 install -U pip
+          run: |
+            pip3 install tensor_theorem_prover --pre --no-index --find-links dist/ --force-reinstall
+            cd .. && python3 -c "import tensor_theorem_prover"
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
@@ -206,13 +205,22 @@ jobs:
           path: dist
 
   release:
-    needs: lint_test_and_build
+    needs:
+      - lint_test_and_build
+      - windows
+      - macos
+      - linux
+      - musllinux
+      - musllinux-cross
     # https://github.community/t/how-do-i-specify-job-dependency-running-in-another-workflow/16482
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
     concurrency: release
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+        with:
+          name: wheels
       - name: Semantic Release
         # uses: relekang/python-semantic-release@v7.28.1
         # temp fix until https://github.com/relekang/python-semantic-release/pull/472 is fixed
