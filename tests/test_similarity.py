@@ -1,11 +1,8 @@
 import pytest
 import numpy as np
-from tensor_theorem_prover.prover.ProofStats import ProofStats
 
 from tensor_theorem_prover.similarity import (
-    SimilarityCache,
     cosine_similarity,
-    similarity_with_cache,
     symbol_compare,
     max_similarity,
 )
@@ -54,17 +51,3 @@ def test_max_similarity_takes_the_max_of_all_passed_similarity_measures() -> Non
         )
         == 1.0
     )
-
-
-def test_similarity_with_cache() -> None:
-    stats = ProofStats()
-    item1 = Constant("a", np.array([1, 0, 1]))
-    item2 = Constant("b", np.array([0, 1, 1]))
-    cache: SimilarityCache = {(id(item1), id(item2)): 0.75}
-    similarity = similarity_with_cache(cosine_similarity, cache, stats)
-    assert similarity(item1, item2) == pytest.approx(0.75)
-    assert stats.similarity_cache_hits == 1
-    cache.clear()
-    assert similarity(item1, item2) == pytest.approx(0.5)
-    assert cache[(id(item1), id(item2))] == pytest.approx(0.5)
-    assert stats.similarity_cache_hits == 1

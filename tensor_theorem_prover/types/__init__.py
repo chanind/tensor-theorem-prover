@@ -1,4 +1,5 @@
-from .Atom import Atom, Term
+from .Atom import Atom
+from .Term import Term
 from .Constant import Constant
 from .Predicate import Predicate
 from .Variable import Variable
