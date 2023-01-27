@@ -226,6 +226,8 @@ jobs:
     concurrency: release
     steps:
       - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GH_PAT }}
       - name: Semantic Release
         # uses: relekang/python-semantic-release@v7.28.1
         # temp fix until https://github.com/relekang/python-semantic-release/pull/472 is fixed
