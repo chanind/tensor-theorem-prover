@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.13.1 (2023-01-27)
+### Fix
+* Tweak job syntax to run on all tags ([`36089b1`](https://github.com/chanind/tensor-theorem-prover/commit/36089b19361a4e24890e3b074ec10890fccb47fb))
+
 ## v0.13.0 (2023-01-27)
 ### Feature
 * Ignore build step in semantic-release ([`0ed0c35`](https://github.com/chanind/tensor-theorem-prover/commit/0ed0c358c742853dc31ecf450bd7816e9a2d7a39))
