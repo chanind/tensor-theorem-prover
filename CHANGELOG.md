@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.13.6 (2023-01-27)
+### Fix
+* Fixing deploy and stopping infinite run loop ([`1e63a10`](https://github.com/chanind/tensor-theorem-prover/commit/1e63a1074ce565284503d93af511e174cb172a26))
+
 ## v0.13.5 (2023-01-27)
 ### Fix
 * Trying using the PAT for checkout too to see if the workflow will run... ([`b84b6c7`](https://github.com/chanind/tensor-theorem-prover/commit/b84b6c7fda242e2cc87a53b4c87eae18da8959be))
