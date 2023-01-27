@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.13.7 (2023-01-27)
+### Fix
+* Trying a different method to skip buiding the release commit ([`44c2523`](https://github.com/chanind/tensor-theorem-prover/commit/44c2523f6be1ead4c28c05120caa73a3c57f7616))
+
 ## v0.13.6 (2023-01-27)
 ### Fix
 * Fixing deploy and stopping infinite run loop ([`1e63a10`](https://github.com/chanind/tensor-theorem-prover/commit/1e63a1074ce565284503d93af511e174cb172a26))
