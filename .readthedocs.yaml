@@ -1,15 +1,22 @@
 version: 2
 
 build:
-  os: ubuntu-20.04
+  os: ubuntu-22.04
   tools:
-    python: "3.9"
+    python: "3.11"
+    rust: "1.64"
   jobs:
     post_install:
-      - pip install poetry==1.2.2
-      - poetry config virtualenvs.create false
-      - poetry install
+      # TODO: try to get this to install via poetry without breaking the build to be DRY
+      - pip install furo
+      # weirdly, deleting the main folder allows sphinx to find the compiled whl
+      - rm -rf tensor_theorem_prover
 
 sphinx:
   configuration: docs/conf.py
   fail_on_warning: true
+
+python:
+  install:
+    - method: pip
+      path: .
