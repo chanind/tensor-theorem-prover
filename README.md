@@ -194,6 +194,14 @@ Searching for a proof using `prover.prove()` always enables this optimization, b
 prover = ResolutionProver(knowledge=knowledge, skip_seen_resolvents=True)
 ```
 
+### Max resolution attempts
+
+As a final backstop against the search tree getting too large, you can set a maximum resolution attempts parameter to force the prover to give up after a finite amount of attempts. You can set this parameter when creating a `ResolutionProver` as shown below:
+
+```python
+prover = ResolutionProver(knowledge=knowledge, max_resolution_attempts=100_000_000)
+```
+
 ## Acknowledgements
 
 This library borrows code and ideas from the earier library [fuzzy-reasoner](https://github.com/fuzzy-reasoner/fuzzy-reasoner). The main difference between these libraries is that tensor-theorem-prover supports full first-order logic using Resolution, whereas fuzzy-reasoner is restricted to Horn clauses and uses backwards chaining.

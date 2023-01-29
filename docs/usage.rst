@@ -182,3 +182,12 @@ Searching for a proof using `prover.prove()` always enables this optimization, b
 .. code-block:: python
 
     prover = ResolutionProver(knowledge=knowledge, skip_seen_resolvents=True)
+
+Max resolution attempts
+'''''''''''''''''''''''
+
+As a final backstop against the search tree getting too large, you can set a maximum resolution attempts parameter to force the prover to give up after a finite amount of attempts. You can set this parameter when creating a `ResolutionProver` as shown below:
+
+.. code-block:: python
+
+    prover = ResolutionProver(knowledge=knowledge, max_resolution_attempts=100_000_000)
