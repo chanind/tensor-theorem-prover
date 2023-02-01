@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 
 use pyo3::prelude::*;
 
@@ -79,16 +79,25 @@ impl ResolutionProverBackend {
             self.py_similarity_fn.clone(),
         );
 
+        let mut prove_deque = VecDeque::new();
         for inverted_goal in arc_inverted_goals {
-            self.prove_all_recursive(inverted_goal.clone(), &knowledge, &mut ctx, 0, None);
-            for (leaf_proof_step, leaf_proof_stats) in ctx.leaf_proof_steps_with_stats() {
-                proofs.push(Proof::new(
-                    (*inverted_goal.item).clone(),
-                    leaf_proof_step.running_similarity,
-                    leaf_proof_stats,
-                    leaf_proof_step,
-                ));
+            prove_deque.push_back((inverted_goal.clone(), None));
+        }
+        while let Some((goal, parent_step_node)) = prove_deque.pop_back() {
+            let next_steps =
+                self.evaluate_proof_step(goal.clone(), &knowledge, &mut ctx, 0, parent_step_node);
+            if let Some(next_steps) = next_steps {
+                for next_step in next_steps {
+                    prove_deque.push_back((next_step.inner.resolvent.clone(), Some(next_step)));
+                }
             }
+        }
+        for (leaf_proof_step, leaf_proof_stats) in ctx.leaf_proof_steps_with_stats() {
+            proofs.push(Proof::new(
+                leaf_proof_step.running_similarity,
+                leaf_proof_stats,
+                leaf_proof_step,
+            ));
         }
 
         proofs.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
@@ -112,31 +121,32 @@ impl ResolutionProverBackend {
 }
 
 impl ResolutionProverBackend {
-    fn prove_all_recursive(
+    fn evaluate_proof_step(
         &self,
         goal: PyArcItem<CNFDisjunction>,
         knowledge: &BTreeSet<PyArcItem<CNFDisjunction>>,
         ctx: &mut ProofContext,
         depth: usize,
         parent_state: Option<ProofStepNode>,
-    ) {
+    ) -> Option<Vec<ProofStepNode>> {
         if parent_state.is_some() && depth >= self.max_proof_depth {
-            return;
+            return None;
         }
         if let Some(max_resolution_attempts) = self.max_resolution_attempts {
             if ctx.stats.attempted_resolutions >= max_resolution_attempts {
-                return;
+                return None;
             }
         }
         if let Some(max_proofs) = ctx.max_proofs {
             if !self.find_highest_similarity_proofs && ctx.total_leaf_proofs() >= max_proofs {
-                return;
+                return None;
             }
         }
         if depth >= ctx.stats.max_depth_seen {
             ctx.stats.max_depth_seen = depth + 1;
         }
 
+        let mut unfinished_next_steps = Vec::new();
         for clause in knowledge {
             // resolution always ends up removing a literal from the clause and the goal, and combining the remaining literals
             // so we know what the length of the resolvent will be before we even try to resolve
@@ -164,16 +174,11 @@ impl ResolutionProverBackend {
                     if resolvent_width >= ctx.stats.max_resolvent_width_seen {
                         ctx.stats.max_resolvent_width_seen = resolvent_width;
                     }
-                    self.prove_all_recursive(
-                        next_step.inner.resolvent.clone(),
-                        knowledge,
-                        ctx,
-                        depth + 1,
-                        Some(next_step),
-                    );
+                    unfinished_next_steps.push(next_step);
                 }
             }
         }
+        Some(unfinished_next_steps)
     }
 }
 
