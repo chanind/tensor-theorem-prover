@@ -1,4 +1,5 @@
 use rustc_hash::FxHashMap;
+use std::sync::atomic::Ordering::Relaxed;
 
 use crate::prover::{ProofContext, SubstitutionsMap};
 use crate::types::{Atom, Term};
@@ -13,16 +14,16 @@ pub struct Unification {
 /// Fuzzy-optional implementation of unify
 /// If no similarity_func is provided, or if either atom lacks a embedding,
 /// then it will do an exact match on the symbols themselves
-pub fn unify(source: &Atom, target: &Atom, ctx: &mut ProofContext) -> Option<Unification> {
+pub fn unify(source: &Atom, target: &Atom, ctx: &ProofContext) -> Option<Unification> {
     if source.terms.len() != target.terms.len() {
         return None;
     }
 
     let similarity = ctx.calc_similarity(&source.predicate, &target.predicate);
-    ctx.stats.similarity_comparisons += 1;
+    ctx.stats.similarity_comparisons.fetch_add(1, Relaxed);
 
     // abort early if the predicate similarity is too low
-    if similarity <= ctx.min_similarity_threshold {
+    if similarity <= ctx.min_similarity_threshold.load(Relaxed) {
         return None;
     }
 
@@ -58,7 +59,7 @@ fn unify_terms(
     source_terms: &[Term],
     target_terms: &[Term],
     similarity: f64,
-    ctx: &mut ProofContext,
+    ctx: &ProofContext,
 ) -> Option<Unification> {
     let mut cur_similarity = similarity;
     let mut substitutions: SubstitutionSet = FxHashMap::default();
@@ -167,7 +168,7 @@ fn unify_term_pair(
     target_term: &Term,
     substitutions: &mut SubstitutionSet,
     similarity: f64,
-    ctx: &mut ProofContext,
+    ctx: &ProofContext,
 ) -> Option<f64> {
     let mut pairs_stack: Vec<(LabeledTerm, LabeledTerm)> = vec![(
         LabeledTerm::new(BindingLabel::Source, source_term.clone()),
@@ -195,8 +196,8 @@ fn unify_term_pair(
             if cur_source_const != cur_target_const {
                 cur_similarity =
                     cur_similarity.min(ctx.calc_similarity(cur_source_const, cur_target_const));
-                ctx.stats.similarity_comparisons += 1;
-                if cur_similarity <= ctx.min_similarity_threshold {
+                ctx.stats.similarity_comparisons.fetch_add(1, Relaxed);
+                if cur_similarity <= ctx.min_similarity_threshold.load(Relaxed) {
                     return None;
                 }
             }

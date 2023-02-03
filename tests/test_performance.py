@@ -86,6 +86,7 @@ def test_performance_with_amr_reasoner_batch() -> None:
             max_resolvent_width=10,
             min_similarity_threshold=0.5,
             skip_seen_resolvents=True,
+            max_resolution_attempts=100_000_000,
         )
         for goal in sample["goals"]:
             proofs, proof_stats = prover.prove_all_with_stats(goal, max_proofs=None)
@@ -114,7 +115,7 @@ def test_performance_with_amr_reasoner_batch() -> None:
     assert False
 
 
-@pytest.mark.skip(reason="Performance test")
+# @pytest.mark.skip(reason="Performance test")
 def test_performance_with_mixed_amr_reasoner_batch() -> None:
     with open("tests/amr_logic_batch.pickle", "rb") as f:
         batch = pickle.load(f)
@@ -128,9 +129,10 @@ def test_performance_with_mixed_amr_reasoner_batch() -> None:
         knowledge=all_knowledge,
         similarity_func=max_similarity([cosine_similarity, partial_symbol_compare]),
         max_proof_depth=12,
-        max_resolvent_width=6,
+        max_resolvent_width=7,
         min_similarity_threshold=0.5,
         skip_seen_resolvents=True,
+        max_resolution_attempts=500_000_000,
     )
     for goal in sample["goals"]:
         proofs, proof_stats = prover.prove_all_with_stats(goal, max_proofs=1)

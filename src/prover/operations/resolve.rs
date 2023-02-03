@@ -1,6 +1,7 @@
 use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::collections::BTreeSet;
+use std::sync::atomic::Ordering::Relaxed;
 
 use crate::{
     prover::{proof_step::ProofStepNode, ProofContext, ProofStep, SubstitutionsMap},
@@ -25,7 +26,7 @@ lazy_static! {
 pub fn resolve(
     source: &PyArcItem<CNFDisjunction>,
     target: &PyArcItem<CNFDisjunction>,
-    ctx: &mut ProofContext,
+    ctx: &ProofContext,
     parent_node: Option<&ProofStepNode>,
 ) -> Vec<ProofStepNode> {
     let mut next_steps = Vec::new();
@@ -35,10 +36,10 @@ pub fn resolve(
         if source_literal.item.polarity == target_literal.item.polarity {
             continue;
         }
-        ctx.stats.attempted_unifications += 1;
+        ctx.stats.attempted_unifications.fetch_add(1, Relaxed);
         let unification = unify(&source_literal.item.atom, &target_literal.item.atom, ctx);
         if let Some(unification) = unification {
-            ctx.stats.successful_unifications += 1;
+            ctx.stats.successful_unifications.fetch_add(1, Relaxed);
 
             let resolvent = build_resolvent(
                 source,
