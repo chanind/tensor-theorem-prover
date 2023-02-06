@@ -20,10 +20,10 @@ pub fn unify(source: &Atom, target: &Atom, ctx: &ProofContext) -> Option<Unifica
     }
 
     let similarity = ctx.calc_similarity(&source.predicate, &target.predicate);
-    ctx.stats.similarity_comparisons.fetch_add(1, Relaxed);
+    //ctx.stats.similarity_comparisons.fetch_add(1, Relaxed);
 
     // abort early if the predicate similarity is too low
-    if similarity <= ctx.min_similarity_threshold.load(Relaxed) {
+    if similarity <= ctx.min_similarity_threshold {
         return None;
     }
 
@@ -196,8 +196,8 @@ fn unify_term_pair(
             if cur_source_const != cur_target_const {
                 cur_similarity =
                     cur_similarity.min(ctx.calc_similarity(cur_source_const, cur_target_const));
-                ctx.stats.similarity_comparisons.fetch_add(1, Relaxed);
-                if cur_similarity <= ctx.min_similarity_threshold.load(Relaxed) {
+                //ctx.stats.similarity_comparisons.fetch_add(1, Relaxed);
+                if cur_similarity <= ctx.min_similarity_threshold {
                     return None;
                 }
             }

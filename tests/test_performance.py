@@ -127,12 +127,15 @@ def test_performance_with_mixed_amr_reasoner_batch() -> None:
         all_knowledge.extend(sample["knowledge"])
     prover = ResolutionProver(
         knowledge=all_knowledge,
-        similarity_func=max_similarity([cosine_similarity, partial_symbol_compare]),
-        max_proof_depth=12,
-        max_resolvent_width=7,
+        # similarity_func=max_similarity([cosine_similarity, partial_symbol_compare]),
+        similarity_func=None,
+        cache_similarity=False,
+        max_proof_depth=10,
+        max_resolvent_width=6,
         min_similarity_threshold=0.5,
-        skip_seen_resolvents=True,
-        max_resolution_attempts=500_000_000,
+        skip_seen_resolvents=False,
+        # max_resolution_attempts=50_000_000,
+        num_workers=1,
     )
     for goal in sample["goals"]:
         proofs, proof_stats = prover.prove_all_with_stats(goal, max_proofs=1)

@@ -15,6 +15,11 @@ sugars = "3.0.1"
 lazy_static = "1.4.0"
 rayon = "1.6.1"
 atomic_float = "0.1.0"
+dashmap = "5.4.0"
+profiling = "1.0.7"
 
 [package.metadata.maturin]
 name = "tensor_theorem_prover._rust"
+
+# [features]
+# default = ["profiling/profile-with-tracy"]

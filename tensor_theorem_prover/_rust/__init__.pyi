@@ -97,6 +97,7 @@ class RsResolutionProverBackend:
     skip_seen_resolvents: bool
     find_highest_similarity_proofs: bool
     base_knowledge: set[RsCNFDisjunction]
+    num_workers: int
 
     def __init__(
         self,

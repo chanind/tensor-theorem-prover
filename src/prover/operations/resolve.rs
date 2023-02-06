@@ -36,10 +36,10 @@ pub fn resolve(
         if source_literal.item.polarity == target_literal.item.polarity {
             continue;
         }
-        ctx.stats.attempted_unifications.fetch_add(1, Relaxed);
+        //ctx.stats.attempted_unifications.fetch_add(1, Relaxed);
         let unification = unify(&source_literal.item.atom, &target_literal.item.atom, ctx);
         if let Some(unification) = unification {
-            ctx.stats.successful_unifications.fetch_add(1, Relaxed);
+            //ctx.stats.successful_unifications.fetch_add(1, Relaxed);
 
             let resolvent = build_resolvent(
                 source,

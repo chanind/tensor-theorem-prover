@@ -1,4 +1,5 @@
 from __future__ import annotations
+import multiprocessing
 
 from typing import Iterable, Optional
 
@@ -36,6 +37,7 @@ class ResolutionProver:
         cache_similarity: bool = True,
         skip_seen_resolvents: bool = False,
         find_highest_similarity_proofs: bool = True,
+        num_workers: Optional[int] = None
     ) -> None:
         self.skolemizer = Skolemizer()
         self.backend = RsResolutionProverBackend(
@@ -48,6 +50,7 @@ class ResolutionProver:
             skip_seen_resolvents,
             find_highest_similarity_proofs,
             set(),
+            max(1, num_workers or multiprocessing.cpu_count()),
         )
         if knowledge is not None:
             self.extend_knowledge(knowledge)

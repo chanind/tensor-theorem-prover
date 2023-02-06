@@ -1,7 +1,7 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::Arc;
 
+// use profiling::tracy_client;
 use pyo3::prelude::*;
 
 use crate::types::CNFDisjunction;
@@ -18,6 +18,7 @@ struct ResolutionProverConfig {
     max_resolvent_width: Option<usize>,
     skip_seen_resolvents: bool,
     find_highest_similarity_proofs: bool,
+    eval_batch_size: usize,
 }
 
 #[pyclass(name = "RsResolutionProverBackend")]
@@ -28,6 +29,7 @@ pub struct ResolutionProverBackend {
     base_knowledge: BTreeSet<PyArcItem<CNFDisjunction>>,
     num_workers: usize,
     config: ResolutionProverConfig,
+    // _tracy: tracy_client::Client,
 }
 #[pymethods]
 impl ResolutionProverBackend {
@@ -50,6 +52,7 @@ impl ResolutionProverBackend {
             max_resolution_attempts,
             skip_seen_resolvents,
             find_highest_similarity_proofs,
+            eval_batch_size: 20000,
         };
         Self {
             py_similarity_fn,
@@ -62,6 +65,7 @@ impl ResolutionProverBackend {
             base_knowledge,
             num_workers,
             config,
+            // _tracy: tracy_client::Client::start(),
         }
     }
 
@@ -71,13 +75,16 @@ impl ResolutionProverBackend {
 
     /// Find all possible proofs for the given goal, sorted by similarity score.
     /// Return the proofs and the stats for the proof search.
+    #[profiling::function]
     pub fn prove_all_with_stats(
         &self,
+        py: Python<'_>,
         inverted_goals: BTreeSet<CNFDisjunction>,
         extra_knowledge: Option<BTreeSet<CNFDisjunction>>,
         max_proofs: Option<usize>,
         skip_seen_resolvents: Option<bool>,
     ) -> (Vec<Proof>, FrozenProofStats) {
+        profiling::register_thread!("main");
         let parsed_extra_knowledge = extra_knowledge.unwrap_or_default();
         let mut proofs = vec![];
         let mut knowledge = self.base_knowledge.clone();
@@ -97,24 +104,18 @@ impl ResolutionProverBackend {
             .build()
             .unwrap();
 
-        let arc_config = Arc::new(self.config.clone());
-        threadpool.scope(|scope| {
-            for inverted_goal in arc_inverted_goals {
-                let cloned_config = Arc::clone(&arc_config);
-                scope.spawn(move |next_scope| {
-                    evaluate_proof_step(
-                        cloned_config,
-                        inverted_goal.clone(),
-                        &knowledge,
-                        &ctx,
-                        0,
-                        None,
-                        next_scope,
-                    );
-                });
-            }
+        py.allow_threads(|| {
+            threadpool.scope(|scope| {
+                profiling::register_thread!();
+                let batch = arc_inverted_goals
+                    .into_iter()
+                    .map(|inverted_goal| (inverted_goal, None))
+                    .collect::<VecDeque<_>>();
+                search_proof_steps_batch(batch, &self.config, &knowledge, &ctx, scope);
+            });
         });
 
+        let frozen_stats = ctx.stats.copy_and_freeze();
         for (leaf_proof_step, leaf_proof_stats) in ctx.leaf_proof_steps_with_stats() {
             proofs.push(Proof::new(
                 leaf_proof_step.running_similarity,
@@ -128,7 +129,7 @@ impl ResolutionProverBackend {
             proofs.truncate(max_proofs);
         }
 
-        (proofs, ctx.stats.copy_and_freeze())
+        (proofs, frozen_stats)
     }
 
     pub fn purge_similarity_cache(&mut self) {
@@ -143,15 +144,53 @@ impl ResolutionProverBackend {
     }
 }
 
-fn evaluate_proof_step<'a>(
-    config: Arc<ResolutionProverConfig>,
-    goal: PyArcItem<CNFDisjunction>,
+#[profiling::function]
+fn search_proof_steps_batch<'a>(
+    batch: VecDeque<(PyArcItem<CNFDisjunction>, Option<ProofStepNode>)>,
+    config: &'a ResolutionProverConfig,
     knowledge: &'a BTreeSet<PyArcItem<CNFDisjunction>>,
     ctx: &'a ProofContext,
-    depth: usize,
-    parent_state: Option<ProofStepNode>,
     scope: &rayon::Scope<'a>,
 ) {
+    let mut next_batch = batch;
+    loop {
+        let mut results_accumulator = VecDeque::new();
+        for (goal, parent_state) in next_batch {
+            evaluate_proof_step(
+                goal,
+                config,
+                knowledge,
+                ctx,
+                parent_state,
+                &mut results_accumulator,
+            );
+            if results_accumulator.len() >= config.eval_batch_size {
+                let next_batch = results_accumulator
+                    .drain(..config.eval_batch_size)
+                    .collect();
+                scope.spawn(move |next_scope| {
+                    profiling::register_thread!();
+                    search_proof_steps_batch(next_batch, config, knowledge, ctx, next_scope);
+                });
+            }
+        }
+        if results_accumulator.is_empty() {
+            return;
+        }
+        next_batch = results_accumulator;
+    }
+}
+
+#[profiling::function]
+fn evaluate_proof_step<'a>(
+    goal: PyArcItem<CNFDisjunction>,
+    config: &ResolutionProverConfig,
+    knowledge: &BTreeSet<PyArcItem<CNFDisjunction>>,
+    ctx: &ProofContext,
+    parent_state: Option<ProofStepNode>,
+    results_accumulator: &mut VecDeque<(PyArcItem<CNFDisjunction>, Option<ProofStepNode>)>,
+) {
+    let depth = parent_state.as_ref().map(|s| s.inner.depth).unwrap_or(0);
     if parent_state.is_some() && depth >= config.max_proof_depth {
         return;
     }
@@ -180,12 +219,12 @@ fn evaluate_proof_step<'a>(
         if next_steps.len() > 0 {
             ctx.stats.successful_resolutions.fetch_add(1, Relaxed);
         }
+        let min_similarity_threshold = ctx.min_similarity_threshold;
         for next_step in next_steps {
             if next_step.inner.resolvent.item.literals.is_empty() {
                 ctx.record_leaf_proof(next_step);
-            } else {
-                if next_step.inner.running_similarity <= ctx.min_similarity_threshold.load(Relaxed)
-                {
+            } else if depth + 1 < config.max_proof_depth {
+                if next_step.inner.running_similarity <= min_similarity_threshold {
                     continue;
                 }
                 if !ctx.check_resolvent(&next_step.inner) {
@@ -195,18 +234,7 @@ fn evaluate_proof_step<'a>(
                 ctx.stats
                     .max_resolvent_width_seen
                     .fetch_max(resolvent_width, Relaxed);
-                let cloned_config = Arc::clone(&config);
-                scope.spawn(move |next_scope| {
-                    evaluate_proof_step(
-                        cloned_config,
-                        next_step.inner.resolvent.clone(),
-                        knowledge,
-                        ctx,
-                        depth + 1,
-                        Some(next_step),
-                        next_scope,
-                    );
-                });
+                results_accumulator.push_back((next_step.inner.resolvent.clone(), Some(next_step)));
             }
         }
     }

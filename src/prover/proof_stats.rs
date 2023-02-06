@@ -35,6 +35,7 @@ impl ProofStats {
     }
 }
 impl ProofStats {
+    #[profiling::function]
     pub fn copy_and_freeze(&self) -> FrozenProofStats {
         FrozenProofStats {
             attempted_unifications: self.attempted_unifications.load(Relaxed),

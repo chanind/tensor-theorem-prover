@@ -1,7 +1,8 @@
 use atomic_float::AtomicF64;
+use dashmap::DashMap;
 use pyo3::prelude::*;
-use rustc_hash::{FxHashMap, FxHasher};
-use std::hash::{Hash, Hasher};
+use rustc_hash::FxHasher;
+use std::hash::{BuildHasherDefault, Hash, Hasher};
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::RwLock;
 
@@ -15,12 +16,12 @@ use super::{FrozenProofStats, ProofStats};
 /// Helper class which accumulates successful proof steps and keeps track of stats during the proof process
 pub struct ProofContext {
     pub stats: ProofStats,
-    pub min_similarity_threshold: AtomicF64,
+    pub min_similarity_threshold: f64,
     pub max_proofs: Option<usize>,
     scored_leaf_proof_steps: RwLock<Vec<(f64, usize, ProofStepNode, FrozenProofStats)>>,
     skip_seen_resolvents: bool,
-    seen_resolvents: RwLock<FxHashMap<u64, (usize, f64)>>,
-    similarity_cache: Option<RwLock<SimilarityCache>>,
+    seen_resolvents: DashMap<u64, (usize, f64), BuildHasherDefault<FxHasher>>,
+    similarity_cache: Option<SimilarityCache>,
     py_similarity_fn: Option<PyObject>,
 }
 impl ProofContext {
@@ -33,16 +34,17 @@ impl ProofContext {
     ) -> Self {
         Self {
             stats: ProofStats::new(),
-            min_similarity_threshold: AtomicF64::new(initial_min_similarity_threshold),
+            min_similarity_threshold: initial_min_similarity_threshold,
             max_proofs,
             scored_leaf_proof_steps: RwLock::new(Vec::new()),
-            seen_resolvents: RwLock::new(FxHashMap::default()),
+            seen_resolvents: DashMap::default(),
             skip_seen_resolvents,
-            similarity_cache: similarity_cache.map(RwLock::new),
+            similarity_cache,
             py_similarity_fn,
         }
     }
 
+    #[profiling::function]
     pub fn record_leaf_proof(&self, proof_step: ProofStepNode) {
         // make sure to clone the stats before appending, since the stats will continue to get mutated after this
         let scored_leaf_proof_steps_guard = self.scored_leaf_proof_steps.write();
@@ -64,13 +66,14 @@ impl ProofContext {
             if scored_leaf_proof_steps.len() > max_proofs {
                 // Remove the proof step with the lowest similarity
                 scored_leaf_proof_steps.pop();
-                self.stats.discarded_proofs.fetch_add(1, Relaxed);
-                self.min_similarity_threshold
-                    .swap(scored_leaf_proof_steps.last().unwrap().0, Relaxed);
+                //self.stats.discarded_proofs.fetch_add(1, Relaxed);
+                // self.min_similarity_threshold
+                //     .swap(scored_leaf_proof_steps.last().unwrap().0, Relaxed);
             }
         }
     }
 
+    #[profiling::function]
     pub fn leaf_proof_steps_with_stats(&self) -> Vec<(ProofStep, FrozenProofStats)> {
         let scored_leaf_proof_steps_guard = self.scored_leaf_proof_steps.read();
         scored_leaf_proof_steps_guard
@@ -80,75 +83,88 @@ impl ProofContext {
             .collect::<Vec<(ProofStep, FrozenProofStats)>>()
     }
 
+    #[profiling::function]
     pub fn total_leaf_proofs(&self) -> usize {
         self.scored_leaf_proof_steps.read().unwrap().len()
     }
 
     /// Check if the resolvent has already been seen at the current depth or below and if so, return False.
     /// Otherwise, add it to the seen set and return True
+    #[profiling::function]
     pub fn check_resolvent(&self, proof_step: &ProofStep) -> bool {
         if !self.skip_seen_resolvents {
             return true;
         }
-        self.stats.resolvent_checks.fetch_add(1, Relaxed);
+        //self.stats.resolvent_checks.fetch_add(1, Relaxed);
         let mut hasher = FxHasher::default();
         proof_step.resolvent.hash(&mut hasher);
         let resolvent_hash = hasher.finish();
-        let cached_seen_resolvent = self.seen_resolvents.read().unwrap().get(&resolvent_hash);
-        if let Some((prev_depth, prev_similarity)) = cached_seen_resolvent {
-            if prev_depth <= &proof_step.depth && prev_similarity >= &proof_step.running_similarity
-            {
-                self.stats.resolvent_check_hits.fetch_add(1, Relaxed);
+        if let Some(seen_resolvent_data) = self.seen_resolvents.get(&resolvent_hash) {
+            let (prev_depth, prev_similarity) = *seen_resolvent_data;
+            if prev_depth <= proof_step.depth && prev_similarity >= proof_step.running_similarity {
+                //self.stats.resolvent_check_hits.fetch_add(1, Relaxed);
                 return false;
             }
         }
-        // explicit drop to make sure we don't hold the read lock while we're writing
-        drop(cached_seen_resolvent);
-        self.seen_resolvents.write().unwrap().insert(
-            resolvent_hash,
-            (proof_step.depth, proof_step.running_similarity),
-        );
+        {
+            profiling::scope!("insert_seen_resolvent");
+            self.seen_resolvents.insert(
+                resolvent_hash,
+                (proof_step.depth, proof_step.running_similarity),
+            );
+        }
         true
     }
 
+    #[profiling::function]
     pub fn calc_similarity<T>(&self, source: &T, target: &T) -> f64
     where
         T: SimilarityComparable + IntoPy<PyObject> + Clone,
     {
-        let src_key = source.similarity_key();
-        let tgt_key = target.similarity_key();
-        let key = src_key ^ tgt_key;
-        match self.similarity_cache {
+        match &self.similarity_cache {
             Some(cache) => {
-                if let Some(similarity) = cache.read().unwrap().get(&key) {
-                    self.stats.similarity_cache_hits.fetch_add(1, Relaxed);
-                    *similarity
-                } else {
-                    let similarity =
-                        raw_calc_similarity(&self.py_similarity_fn, source.clone(), target.clone());
-                    cache.write().unwrap().insert(key.clone(), similarity);
+                let src_key = source.similarity_key();
+                let tgt_key = target.similarity_key();
+                let key = src_key ^ tgt_key;
+                {
+                    profiling::scope!("check_similarity_cache");
+                    if let Some(similarity) = cache.get(&key) {
+                        //self.stats.similarity_cache_hits.fetch_add(1, Relaxed);
+                        return *similarity;
+                    }
+                }
+                {
+                    profiling::scope!("update_similarity_cache");
+                    // avoiding if/else here to avoid deadlocks around the read and write locks held at the same time
+                    let similarity = raw_calc_similarity(&self.py_similarity_fn, source, target);
+                    cache.insert(key.clone(), similarity);
                     similarity
                 }
             }
-            None => raw_calc_similarity(&self.py_similarity_fn, source.clone(), target.clone()),
+            None => raw_calc_similarity(&self.py_similarity_fn, source, target),
         }
     }
 }
 
 // perform the actual similarity calculation, ignoring caching
-fn raw_calc_similarity<T>(py_similarity_fn: &Option<PyObject>, src: T, tgt: T) -> f64
+#[profiling::function]
+fn raw_calc_similarity<T>(py_similarity_fn: &Option<PyObject>, src: &T, tgt: &T) -> f64
 where
-    T: SimilarityComparable + IntoPy<PyObject>,
+    T: SimilarityComparable + IntoPy<PyObject> + Clone,
 {
     match py_similarity_fn {
         Some(py_similarity_fn) => {
+            profiling::scope!("py_similarity_fn");
             Python::with_gil(|py| {
                 // TODO: make sure similarity_func is callable, and handle errors better
-                let py_res = py_similarity_fn.call1(py, (src, tgt)).unwrap();
+                let py_res = py_similarity_fn
+                    .call1(py, (src.clone(), tgt.clone()))
+                    .unwrap();
                 py_res.extract::<f64>(py).unwrap()
             })
         }
         None => {
+            profiling::scope!("rust_similarity_fn");
             // if no similarity function is provided, just do plain string equality on symbols
             if src.symbol() == tgt.symbol() {
                 1.0
@@ -197,7 +213,7 @@ mod test {
 
     #[test]
     fn test_record_leaf_proof_keeps_step_with_highest_similarity() {
-        let mut ctx = super::ProofContext::new(0.0, Some(1), false, None, None);
+        let ctx = super::ProofContext::new(0.0, Some(1), false, None, None);
         let proof_step1 = create_proof_step_node(2, 0.5);
         ctx.record_leaf_proof(proof_step1.clone());
         assert_eq!(ctx.scored_leaf_proof_steps.read().unwrap().len(), 1);
@@ -217,7 +233,7 @@ mod test {
 
     #[test]
     fn test_record_leaf_proof_keeps_step_with_lowest_depth_if_similarity_is_equal() {
-        let mut ctx = super::ProofContext::new(0.0, Some(1), false, None, None);
+        let ctx = super::ProofContext::new(0.0, Some(1), false, None, None);
         let proof_step1 = create_proof_step_node(4, 0.5);
         ctx.record_leaf_proof(proof_step1.clone());
         assert_eq!(ctx.scored_leaf_proof_steps.read().unwrap().len(), 1);
@@ -237,7 +253,7 @@ mod test {
 
     #[test]
     fn test_check_resolvent() {
-        let mut ctx: super::ProofContext = super::ProofContext::new(0.0, Some(1), true, None, None);
+        let ctx: super::ProofContext = super::ProofContext::new(0.0, Some(1), true, None, None);
         let proof_step = create_proof_step_node(4, 0.5);
         assert!(ctx.check_resolvent(&proof_step.inner));
 
