@@ -2,6 +2,15 @@
 
 <!--next-version-placeholder-->
 
+## v0.14.0 (2023-02-07)
+### Feature
+* Hopefully fixing semantic release so feat can deploy ([`de8282c`](https://github.com/chanind/tensor-theorem-prover/commit/de8282c78f5354cd511d6a954790ffa936d5c7aa))
+* Multithreading ([#6](https://github.com/chanind/tensor-theorem-prover/issues/6)) ([`8370747`](https://github.com/chanind/tensor-theorem-prover/commit/8370747157ae521932ee013b1936beedeb21d3fb))
+
+### Fix
+* Try more things to fix tagging ([`6e8b931`](https://github.com/chanind/tensor-theorem-prover/commit/6e8b9315d220aadb327b279ef4bdfc8f0612fb0d))
+* Try using v2 for the checkout action to fix tagging ([`42f31f9`](https://github.com/chanind/tensor-theorem-prover/commit/42f31f9b17c24c6fcfb4cb3600307bd8aecfe290))
+
 ## v0.13.8 (2023-01-27)
 ### Fix
 * Improving consistency on identical runs ([#5](https://github.com/chanind/tensor-theorem-prover/issues/5)) ([`5a23ca5`](https://github.com/chanind/tensor-theorem-prover/commit/5a23ca51d14c9ffafaf9ce0dc169159f38145ae9))
