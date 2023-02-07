@@ -1,3 +1,7 @@
-use rustc_hash::FxHashMap;
+use std::{collections::HashMap, hash::BuildHasherDefault};
 
-pub type SimilarityCache = FxHashMap<u64, f64>;
+use dashmap::DashMap;
+use rustc_hash::FxHasher;
+
+pub type SimilarityCache = DashMap<u64, f64, BuildHasherDefault<FxHasher>>;
+pub type FallthroughSimilarityCache = HashMap<u64, f64, BuildHasherDefault<FxHasher>>;

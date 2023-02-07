@@ -202,9 +202,17 @@ As a final backstop against the search tree getting too large, you can set a max
 prover = ResolutionProver(knowledge=knowledge, max_resolution_attempts=100_000_000)
 ```
 
+### Multithreading
+
+By default, the ResolutionProver will try to use available CPU cores up to a max of 6, though this may change in future releases. If you want to explicitly control the number of worker threads used for solving, pass `num_workers` when creating the `ResolutionProver`, like below:
+
+```python
+prover = ResolutionProver(knowledge=knowledge, num_workers=1)
+```
+
 ## Acknowledgements
 
-This library borrows code and ideas from the earier library [fuzzy-reasoner](https://github.com/fuzzy-reasoner/fuzzy-reasoner). The main difference between these libraries is that tensor-theorem-prover supports full first-order logic using Resolution, whereas fuzzy-reasoner is restricted to Horn clauses and uses backwards chaining.
+This library borrows code and ideas from the earier library [fuzzy-reasoner](https://github.com/fuzzy-reasoner/fuzzy-reasoner). The main difference between these libraries is that tensor-theorem-prover supports full first-order logic using Resolution, whereas fuzzy-reasoner is restricted to Horn clauses and uses backwards chaining. This library is also much more optimized than the fuzzy-reasoner, as the core of tensor-theorem-prover is written in rust and supports multithreading, while fuzzy-reasoner is pure Python.
 
 Like fuzzy-reasoner, this library also takes inspiration from the following papers for the idea of using vector similarity in theorem proving:
 

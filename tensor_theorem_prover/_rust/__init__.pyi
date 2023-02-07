@@ -66,17 +66,11 @@ class RsProofStep:
     depth: int
 
 class RsProofStats:
-    attempted_unifications: int
-    successful_unifications: int
-    similarity_comparisons: int
-    similarity_cache_hits: int
     attempted_resolutions: int
     successful_resolutions: int
     max_resolvent_width_seen: int
     max_depth_seen: int
     discarded_proofs: int
-    resolvent_checks: int
-    resolvent_check_hits: int
 
 class RsProof:
     goal: RsCNFDisjunction
@@ -97,6 +91,8 @@ class RsResolutionProverBackend:
     skip_seen_resolvents: bool
     find_highest_similarity_proofs: bool
     base_knowledge: set[RsCNFDisjunction]
+    num_workers: int
+    eval_batch_size: int
 
     def __init__(
         self,
@@ -109,6 +105,8 @@ class RsResolutionProverBackend:
         skip_seen_resolvents: bool,
         find_highest_similarity_proofs: bool,
         base_knowledge: set[RsCNFDisjunction],
+        num_workers: int,
+        eval_batch_size: int,
     ) -> None: ...
     def extend_knowledge(self, knowledge: set[RsCNFDisjunction]) -> None: ...
     def prove_all_with_stats(

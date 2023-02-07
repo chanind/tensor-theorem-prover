@@ -3,7 +3,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use std::collections::BTreeSet;
 
 use crate::{
-    prover::{proof_step::ProofStepNode, ProofContext, ProofStep, SubstitutionsMap},
+    prover::{proof_step::ProofStepNode, LocalProofContext, ProofStep, SubstitutionsMap},
     types::{Atom, CNFDisjunction, CNFLiteral, Term, Variable},
     util::PyArcItem,
 };
@@ -25,7 +25,7 @@ lazy_static! {
 pub fn resolve(
     source: &PyArcItem<CNFDisjunction>,
     target: &PyArcItem<CNFDisjunction>,
-    ctx: &mut ProofContext,
+    ctx: &mut LocalProofContext,
     parent_node: Option<&ProofStepNode>,
 ) -> Vec<ProofStepNode> {
     let mut next_steps = Vec::new();
@@ -37,11 +37,8 @@ pub fn resolve(
         if source_literal.item.polarity == target_literal.item.polarity {
             continue;
         }
-        ctx.stats.attempted_unifications += 1;
         let unification = unify(&source_literal.item.atom, &target_literal.item.atom, ctx);
         if let Some(unification) = unification {
-            ctx.stats.successful_unifications += 1;
-
             let resolvent = build_resolvent(
                 source,
                 target,

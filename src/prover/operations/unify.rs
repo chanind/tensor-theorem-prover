@@ -1,6 +1,6 @@
 use rustc_hash::FxHashMap;
 
-use crate::prover::{ProofContext, SubstitutionsMap};
+use crate::prover::{LocalProofContext, SubstitutionsMap};
 use crate::types::{Atom, Term};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -13,16 +13,15 @@ pub struct Unification {
 /// Fuzzy-optional implementation of unify
 /// If no similarity_func is provided, or if either atom lacks a embedding,
 /// then it will do an exact match on the symbols themselves
-pub fn unify(source: &Atom, target: &Atom, ctx: &mut ProofContext) -> Option<Unification> {
+pub fn unify(source: &Atom, target: &Atom, ctx: &mut LocalProofContext) -> Option<Unification> {
     if source.terms.len() != target.terms.len() {
         return None;
     }
 
     let similarity = ctx.calc_similarity(&source.predicate, &target.predicate);
-    ctx.stats.similarity_comparisons += 1;
 
     // abort early if the predicate similarity is too low
-    if similarity <= ctx.min_similarity_threshold {
+    if similarity <= ctx.min_similarity_threshold() {
         return None;
     }
 
@@ -58,7 +57,7 @@ fn unify_terms(
     source_terms: &[Term],
     target_terms: &[Term],
     similarity: f64,
-    ctx: &mut ProofContext,
+    ctx: &mut LocalProofContext,
 ) -> Option<Unification> {
     let mut cur_similarity = similarity;
     let mut substitutions: SubstitutionSet = FxHashMap::default();
@@ -167,7 +166,7 @@ fn unify_term_pair(
     target_term: &Term,
     substitutions: &mut SubstitutionSet,
     similarity: f64,
-    ctx: &mut ProofContext,
+    ctx: &mut LocalProofContext,
 ) -> Option<f64> {
     let mut pairs_stack: Vec<(LabeledTerm, LabeledTerm)> = vec![(
         LabeledTerm::new(BindingLabel::Source, source_term.clone()),
@@ -195,8 +194,7 @@ fn unify_term_pair(
             if cur_source_const != cur_target_const {
                 cur_similarity =
                     cur_similarity.min(ctx.calc_similarity(cur_source_const, cur_target_const));
-                ctx.stats.similarity_comparisons += 1;
-                if cur_similarity <= ctx.min_similarity_threshold {
+                if cur_similarity <= ctx.min_similarity_threshold() {
                     return None;
                 }
             }
@@ -270,20 +268,21 @@ mod test {
         const1, const2, func1, func2, get_py_similarity_fn, pred1, pred2, to_numpy_array, x, y, z,
     };
     use crate::{
-        prover::ProofContext,
+        prover::SharedProofContext,
         types::{Constant, Predicate},
     };
 
-    fn ctx() -> ProofContext {
-        ProofContext::new(0.5, None, true, None, Some(get_py_similarity_fn()))
+    fn ctx() -> SharedProofContext {
+        SharedProofContext::new(0.5, None, true, None, Some(get_py_similarity_fn()))
     }
 
     #[test]
     fn test_unify_with_all_constants() {
         let source = pred1().atom(vec![const1().into(), const2().into()]);
         let target = pred1().atom(vec![const1().into(), const2().into()]);
+        let ctx = ctx();
         assert_eq!(
-            unify(&source, &target, &mut ctx()).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             Unification {
                 source_substitutions: FxHashMap::default(),
                 target_substitutions: FxHashMap::default(),
@@ -294,41 +293,62 @@ mod test {
 
     #[test]
     fn test_unify_fails_if_preds_dont_match() {
+        let ctx = ctx();
         let source = pred1().atom(vec![const1().into(), const2().into()]);
         let target = pred2().atom(vec![const1().into(), const2().into()]);
-        assert_eq!(unify(&source, &target, &mut ctx()), None);
+        assert_eq!(
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
+            None
+        );
     }
 
     #[test]
     fn test_unify_fails_if_terms_dont_match() {
+        let ctx = ctx();
         let source = pred1().atom(vec![const2().into(), const2().into()]);
         let target = pred1().atom(vec![const1().into(), const2().into()]);
-        assert_eq!(unify(&source, &target, &mut ctx()), None);
+        assert_eq!(
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
+            None
+        );
     }
 
     #[test]
     fn test_unify_fails_if_functions_dont_match() {
+        let ctx = ctx();
         let source = pred1().atom(vec![func1().bind(vec![x().into()]).into()]);
         let target = pred1().atom(vec![func2().bind(vec![y().into()]).into()]);
-        assert_eq!(unify(&source, &target, &mut ctx()), None);
+        assert_eq!(
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
+            None
+        );
     }
 
     #[test]
     fn test_unify_fails_if_functions_take_different_number_of_params() {
+        let ctx = ctx();
         let source = pred1().atom(vec![func1().bind(vec![x().into(), y().into()]).into()]);
         let target = pred1().atom(vec![func1().bind(vec![x().into()]).into()]);
-        assert_eq!(unify(&source, &target, &mut ctx()), None);
+        assert_eq!(
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
+            None
+        );
     }
 
     #[test]
     fn test_unify_fails_if_terms_have_differing_lengths() {
+        let ctx = ctx();
         let source = pred1().atom(vec![const1().into()]);
         let target = pred1().atom(vec![const1().into(), const2().into()]);
-        assert_eq!(unify(&source, &target, &mut ctx()), None);
+        assert_eq!(
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
+            None
+        );
     }
 
     #[test]
     fn test_unify_with_source_var_to_target_const() {
+        let ctx = ctx();
         let source = pred1().atom(vec![x().into(), const1().into()]);
         let target = pred1().atom(vec![const2().into(), const1().into()]);
         let expected_unification = Unification {
@@ -337,13 +357,14 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut ctx()).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
 
     #[test]
     fn test_unify_with_source_const_to_target_var() {
+        let ctx = ctx();
         let source = pred1().atom(vec![const2().into(), const1().into()]);
         let target = pred1().atom(vec![x().into(), const1().into()]);
         let expected_unification = Unification {
@@ -352,13 +373,14 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut ctx()).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
 
     #[test]
     fn test_unify_with_source_var_to_target_var() {
+        let ctx = ctx();
         let source = pred1().atom(vec![x().into(), const1().into()]);
         let target = pred1().atom(vec![y().into(), const1().into()]);
         let expected_unification = Unification {
@@ -367,13 +389,14 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut ctx()).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
 
     #[test]
     fn test_unify_with_repeated_vars_in_source() {
+        let ctx = ctx();
         let source = pred1().atom(vec![x().into(), x().into()]);
         let target = pred1().atom(vec![y().into(), const1().into()]);
         let expected_unification = Unification {
@@ -382,13 +405,14 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut ctx()).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
 
     #[test]
     fn test_unify_with_repeated_vars_in_target() {
+        let ctx = ctx();
         let source = pred1().atom(vec![x().into(), const1().into()]);
         let target = pred1().atom(vec![y().into(), y().into()]);
         let expected_unification = Unification {
@@ -397,20 +421,25 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut ctx()).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
 
     #[test]
     fn test_unify_fails_with_unfulfilable_constraints() {
+        let ctx = ctx();
         let source = pred1().atom(vec![x().into(), x().into()]);
         let target = pred1().atom(vec![const1().into(), const2().into()]);
-        assert_eq!(unify(&source, &target, &mut ctx()), None);
+        assert_eq!(
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
+            None
+        );
     }
 
     #[test]
     fn test_unify_with_source_var_to_target_var_with_repeat_constants() {
+        let ctx = ctx();
         let source = pred1().atom(vec![x().into(), x().into(), x().into(), x().into()]);
         let target = pred1().atom(vec![
             const1().into(),
@@ -424,13 +453,14 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut ctx()).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
 
     #[test]
     fn test_unify_with_chained_vars() {
+        let ctx = ctx();
         let source = pred1().atom(vec![
             x().into(),
             x().into(),
@@ -453,13 +483,14 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut ctx()).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
 
     #[test]
     fn test_unify_with_function_map_var_to_const() {
+        let ctx = ctx();
         let source = pred1().atom(vec![func1().bind(vec![x().into()]).into()]);
         let target = pred1().atom(vec![func1().bind(vec![const1().into()]).into()]);
         let expected_unification = Unification {
@@ -468,13 +499,14 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut ctx()).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
 
     #[test]
     fn test_unify_with_function_map_var_to_var() {
+        let ctx = ctx();
         let source = pred1().atom(vec![func1().bind(vec![x().into()]).into()]);
         let target = pred1().atom(vec![func1().bind(vec![y().into()]).into()]);
         let expected_unification = Unification {
@@ -483,13 +515,14 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut ctx()).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
 
     #[test]
     fn test_unify_with_function_map_var_to_var_with_repeat_constants() {
+        let ctx = ctx();
         let source = pred1().atom(vec![func1().bind(vec![x().into(), x().into()]).into()]);
         let target = pred1().atom(vec![func1().bind(vec![const1().into(), y().into()]).into()]);
         let expected_unification = Unification {
@@ -498,13 +531,14 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut ctx()).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
 
     #[test]
     fn test_unify_with_function_map_var_to_var_with_repeat_constants2() {
+        let ctx = ctx();
         let source = pred1().atom(vec![func1().bind(vec![const1().into(), y().into()]).into()]);
         let target = pred1().atom(vec![func1().bind(vec![x().into(), x().into()]).into()]);
         let expected_unification = Unification {
@@ -513,13 +547,14 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut ctx()).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
 
     #[test]
     fn test_unify_bind_nested_function_var() {
+        let ctx = ctx();
         let source = pred1().atom(vec![func1().bind(vec![x().into()]).into()]);
         let target = pred1().atom(vec![func1()
             .bind(vec![func2().bind(vec![const1().into()]).into()])
@@ -530,27 +565,32 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut ctx()).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
 
     #[test]
     fn test_unify_fails_to_bind_reciprocal_functions() {
+        let ctx = ctx();
         let source = pred1().atom(vec![func1().bind(vec![x().into()]).into(), x().into()]);
         let target = pred1().atom(vec![y().into(), func1().bind(vec![y().into()]).into()]);
-        assert_eq!(unify(&source, &target, &mut ctx()), None);
+        assert_eq!(
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
+            None
+        );
     }
 
     #[test]
     fn test_unify_with_predicate_vector_embeddings() {
+        let ctx = ctx();
         let embedding1 = to_numpy_array(vec![1.0, 0.0, 1.0, 1.0]);
         let embedding2 = to_numpy_array(vec![1.0, 0.0, 0.9, 1.0]);
         let vec_pred1 = Predicate::new("pred1", Some(embedding1));
         let vec_pred2 = Predicate::new("pred2", Some(embedding2));
         let source = vec_pred1.atom(vec![x().into()]);
         let target = vec_pred2.atom(vec![const1().into()]);
-        let unification = unify(&source, &target, &mut ctx()).unwrap();
+        let unification = unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap();
         assert_eq!(
             unification.source_substitutions,
             fxmap! { x() => const1().into() }
@@ -561,24 +601,29 @@ mod test {
 
     #[test]
     fn test_unify_fails_with_dissimilar_predicate_vector_embeddings() {
+        let ctx = ctx();
         let embedding1 = to_numpy_array(vec![0.0, 1.0, 1.0, 0.0]);
         let embedding2 = to_numpy_array(vec![1.0, 0.0, 0.3, 1.0]);
         let vec_pred1 = Predicate::new("pred1", Some(embedding1));
         let vec_pred2 = Predicate::new("pred2", Some(embedding2));
         let source = vec_pred1.atom(vec![x().into()]);
         let target = vec_pred2.atom(vec![const1().into()]);
-        assert_eq!(unify(&source, &target, &mut ctx()), None);
+        assert_eq!(
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
+            None
+        );
     }
 
     #[test]
     fn test_unify_with_constant_vector_embeddings() {
+        let ctx = ctx();
         let embedding1 = to_numpy_array(vec![1.0, 0.0, 1.0, 1.0]);
         let embedding2 = to_numpy_array(vec![1.0, 0.0, 0.9, 1.0]);
         let vec_const1 = Constant::new("const1", Some(embedding1));
         let vec_const2 = Constant::new("const2", Some(embedding2));
         let source = pred1().atom(vec![vec_const1.into()]);
         let target = pred1().atom(vec![vec_const2.into()]);
-        let unification = unify(&source, &target, &mut ctx()).unwrap();
+        let unification = unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap();
         assert_eq!(unification.source_substitutions, FxHashMap::default());
         assert_eq!(unification.target_substitutions, FxHashMap::default());
         assert!(unification.similarity > 0.9 && unification.similarity < 1.0);
@@ -586,12 +631,16 @@ mod test {
 
     #[test]
     fn test_unify_fails_with_dissimilar_constant_vector_embeddings() {
+        let ctx = ctx();
         let embedding1 = to_numpy_array(vec![0.0, 1.0, 1.0, 0.0]);
         let embedding2 = to_numpy_array(vec![1.0, 0.0, 0.3, 1.0]);
         let vec_const1 = Constant::new("const1", Some(embedding1));
         let vec_const2 = Constant::new("const2", Some(embedding2));
         let source = pred1().atom(vec![vec_const1.into()]);
         let target = pred1().atom(vec![vec_const2.into()]);
-        assert_eq!(unify(&source, &target, &mut ctx()), None);
+        assert_eq!(
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
+            None
+        );
     }
 }

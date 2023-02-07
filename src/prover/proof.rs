@@ -1,33 +1,25 @@
 use pyo3::prelude::*;
 use rustc_hash::FxHashMap;
 
-use super::{ProofStats, ProofStep, SubstitutionsMap};
+use super::{LocalProofStats, ProofStep, SubstitutionsMap};
 use crate::types::{BoundFunction, CNFDisjunction, Term};
-use crate::util::find_variables_in_terms;
+use crate::util::{find_variables_in_terms, PyArcItem};
 
 /// Respresentation of a successful proof of a goal
 #[pyclass(name = "RsProof")]
 #[derive(Clone)]
 pub struct Proof {
     #[pyo3(get)]
-    pub goal: CNFDisjunction,
-    #[pyo3(get)]
     pub similarity: f64,
     #[pyo3(get)]
-    pub stats: ProofStats,
+    pub stats: LocalProofStats,
     leaf_proof_step: ProofStep,
 }
 #[pymethods]
 impl Proof {
     #[new]
-    pub fn new(
-        goal: CNFDisjunction,
-        similarity: f64,
-        stats: ProofStats,
-        leaf_proof_step: ProofStep,
-    ) -> Proof {
+    pub fn new(similarity: f64, stats: LocalProofStats, leaf_proof_step: ProofStep) -> Proof {
         Proof {
-            goal,
             similarity,
             stats,
             leaf_proof_step,
@@ -37,6 +29,12 @@ impl Proof {
     #[getter]
     pub fn depth(&self) -> usize {
         self.proof_steps().len()
+    }
+
+    #[getter]
+    pub fn goal(&self) -> PyArcItem<CNFDisjunction> {
+        // (*self.proof_steps().first().unwrap().source.item).clone()
+        self.proof_steps().first().unwrap().source.clone()
     }
 
     #[getter]
@@ -55,8 +53,9 @@ impl Proof {
     /// The substitutions made in the proof
     #[getter]
     pub fn substitutions(&self) -> SubstitutionsMap {
-        let goal_terms = self
-            .goal
+        let goal = &self.goal();
+        let goal_terms = goal
+            .item
             .literals
             .iter()
             .flat_map(|literal| literal.item.atom.terms.iter())
