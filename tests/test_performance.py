@@ -93,17 +93,11 @@ def test_performance_with_amr_reasoner_batch() -> None:
             stats.append(proof_stats)
             total_proofs += len(proofs)
     summed_stats = ProofStats(
-        attempted_unifications=sum(s.attempted_unifications for s in stats),
-        successful_unifications=sum(s.successful_unifications for s in stats),
-        similarity_comparisons=sum(s.similarity_comparisons for s in stats),
-        similarity_cache_hits=sum(s.similarity_cache_hits for s in stats),
         attempted_resolutions=sum(s.attempted_resolutions for s in stats),
         successful_resolutions=sum(s.successful_resolutions for s in stats),
         max_resolvent_width_seen=max(s.max_resolvent_width_seen for s in stats),
         max_depth_seen=max(s.max_depth_seen for s in stats),
         discarded_proofs=sum(s.discarded_proofs for s in stats),
-        resolvent_checks=sum(s.resolvent_checks for s in stats),
-        resolvent_check_hits=sum(s.resolvent_check_hits for s in stats),
     )
     print(summed_stats)
     elapsed = time.time() - start
@@ -115,7 +109,7 @@ def test_performance_with_amr_reasoner_batch() -> None:
     assert False
 
 
-# @pytest.mark.skip(reason="Performance test")
+@pytest.mark.skip(reason="Performance test")
 def test_performance_with_mixed_amr_reasoner_batch() -> None:
     with open("tests/amr_logic_batch.pickle", "rb") as f:
         batch = pickle.load(f)
@@ -127,15 +121,14 @@ def test_performance_with_mixed_amr_reasoner_batch() -> None:
         all_knowledge.extend(sample["knowledge"])
     prover = ResolutionProver(
         knowledge=all_knowledge,
-        # similarity_func=max_similarity([cosine_similarity, partial_symbol_compare]),
-        similarity_func=None,
-        # cache_similarity=False,
+        similarity_func=max_similarity([cosine_similarity, partial_symbol_compare]),
         max_proof_depth=12,
         max_resolvent_width=7,
         min_similarity_threshold=0.5,
         skip_seen_resolvents=True,
-        # max_resolution_attempts=50_000_000,
-        num_workers=6,
+        max_resolution_attempts=1_000_000_000,
+        eval_batch_size=10_000,
+        num_workers=8,
     )
     for goal in sample["goals"]:
         proofs, proof_stats = prover.prove_all_with_stats(goal, max_proofs=1)
@@ -147,8 +140,6 @@ def test_performance_with_mixed_amr_reasoner_batch() -> None:
         max_resolvent_width_seen=max(s.max_resolvent_width_seen for s in stats),
         max_depth_seen=max(s.max_depth_seen for s in stats),
         discarded_proofs=sum(s.discarded_proofs for s in stats),
-        resolvent_checks=sum(s.resolvent_checks for s in stats),
-        resolvent_check_hits=sum(s.resolvent_check_hits for s in stats),
     )
     print(summed_stats)
     elapsed = time.time() - start

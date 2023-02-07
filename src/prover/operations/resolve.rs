@@ -3,7 +3,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use std::collections::BTreeSet;
 
 use crate::{
-    prover::{proof_step::ProofStepNode, ProofStep, SubstitutionsMap, WorkerProofContext},
+    prover::{proof_step::ProofStepNode, LocalProofContext, ProofStep, SubstitutionsMap},
     types::{Atom, CNFDisjunction, CNFLiteral, Term, Variable},
     util::PyArcItem,
 };
@@ -25,7 +25,7 @@ lazy_static! {
 pub fn resolve(
     source: &PyArcItem<CNFDisjunction>,
     target: &PyArcItem<CNFDisjunction>,
-    ctx: &mut WorkerProofContext,
+    ctx: &mut LocalProofContext,
     parent_node: Option<&ProofStepNode>,
 ) -> Vec<ProofStepNode> {
     let mut next_steps = Vec::new();

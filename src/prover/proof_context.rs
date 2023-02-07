@@ -2,7 +2,6 @@ use atomic_float::AtomicF64;
 use dashmap::DashMap;
 use pyo3::prelude::*;
 use rustc_hash::FxHasher;
-use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hash, Hasher};
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::RwLock;
@@ -12,23 +11,23 @@ use crate::types::SimilarityComparable;
 use super::proof_step::ProofStepNode;
 use super::similarity_cache::{FallthroughSimilarityCache, SimilarityCache};
 use super::ProofStep;
-use super::{FrozenProofStats, ProofStats};
+use super::{LocalProofStats, SharedProofStats};
 
 type SeenResolventsMap = DashMap<u64, (usize, f64), BuildHasherDefault<FxHasher>>;
 
 /// Helper class which accumulates successful proof steps and keeps track of stats during the proof process
-pub struct ProofContext {
-    pub stats: ProofStats,
+pub struct SharedProofContext {
+    pub stats: SharedProofStats,
     // pub min_similarity_threshold: f64,
     pub min_similarity_threshold: AtomicF64,
     pub max_proofs: Option<usize>,
-    scored_leaf_proof_steps: RwLock<Vec<(f64, usize, ProofStepNode, FrozenProofStats)>>,
+    scored_leaf_proof_steps: RwLock<Vec<(f64, usize, ProofStepNode, LocalProofStats)>>,
     skip_seen_resolvents: bool,
     seen_resolvents: SeenResolventsMap,
     similarity_cache: Option<SimilarityCache>,
     py_similarity_fn: Option<PyObject>,
 }
-impl ProofContext {
+impl SharedProofContext {
     pub fn new(
         initial_min_similarity_threshold: f64,
         max_proofs: Option<usize>,
@@ -37,7 +36,7 @@ impl ProofContext {
         py_similarity_fn: Option<PyObject>,
     ) -> Self {
         Self {
-            stats: ProofStats::new(),
+            stats: SharedProofStats::new(),
             min_similarity_threshold: AtomicF64::new(initial_min_similarity_threshold),
             max_proofs,
             scored_leaf_proof_steps: RwLock::new(Vec::new()),
@@ -76,13 +75,13 @@ impl ProofContext {
         }
     }
 
-    pub fn leaf_proof_steps_with_stats(&self) -> Vec<(ProofStep, FrozenProofStats)> {
+    pub fn leaf_proof_steps_with_stats(&self) -> Vec<(ProofStep, LocalProofStats)> {
         let scored_leaf_proof_steps_guard = self.scored_leaf_proof_steps.read();
         scored_leaf_proof_steps_guard
             .unwrap()
             .iter()
             .map(|(_, _, proof_step, stats)| ((*proof_step.inner).clone(), stats.clone()))
-            .collect::<Vec<(ProofStep, FrozenProofStats)>>()
+            .collect::<Vec<(ProofStep, LocalProofStats)>>()
     }
 
     pub fn total_leaf_proofs(&self) -> usize {
@@ -149,25 +148,29 @@ impl ProofContext {
     }
 }
 
-/// A wrapper context for each worker thread to avoid needing to always load from the main context
+/// A wrapper context for each thread to avoid needing to always load from the shared context
 /// to reduce contention
-pub struct WorkerProofContext<'a> {
-    pub main: &'a ProofContext,
+pub struct LocalProofContext<'a> {
+    pub shared: &'a SharedProofContext,
+    pub stats: LocalProofStats,
     fallthrough_similarity_cache: Option<FallthroughSimilarityCache>,
 }
 
-impl<'a> WorkerProofContext<'a> {
-    pub fn new(main: &'a ProofContext) -> Self {
-        let fallthrough_similarity_cache = match &main.similarity_cache {
+impl<'a> LocalProofContext<'a> {
+    pub fn new(shared: &'a SharedProofContext) -> Self {
+        let fallthrough_similarity_cache = match &shared.similarity_cache {
             Some(_) => Some(FallthroughSimilarityCache::default()),
             None => None,
         };
         Self {
-            main,
+            shared,
             fallthrough_similarity_cache,
+            stats: LocalProofStats::new(),
         }
     }
 
+    /// Calculate the similarity between two objects
+    /// Caches the results locally as well to reduce contention with the shared context
     pub fn calc_similarity<T>(&mut self, source: &T, target: &T) -> f64
     where
         T: SimilarityComparable + IntoPy<PyObject> + Clone,
@@ -180,25 +183,44 @@ impl<'a> WorkerProofContext<'a> {
                 if let Some(similarity) = cache.get(&key) {
                     return *similarity;
                 }
-                let similarity = self.main.calc_similarity_cached(source, target, key);
+                let similarity = self.shared.calc_similarity_cached(source, target, key);
                 cache.insert(key.clone(), similarity);
                 similarity
             }
-            None => self.main.calc_similarity(source, target),
+            None => self.shared.calc_similarity(source, target),
         }
     }
 
     /// Check if the resolvent has already been seen at the current depth or below and if so, return False.
     /// Otherwise, add it to the seen set and return True
     pub fn check_resolvent(&mut self, proof_step: &ProofStep) -> bool {
-        self.main.check_resolvent(proof_step)
+        self.shared.check_resolvent(proof_step)
     }
 
     pub fn min_similarity_threshold(&self) -> f64 {
-        self.main.min_similarity_threshold.load(Relaxed)
+        self.shared.min_similarity_threshold.load(Relaxed)
     }
 
-    pub fn sync_with_main_ctx(&mut self) {}
+    /// Write out any local state to the shared context
+    pub fn sync_with_shared_ctx(&mut self) {
+        let main_stats = &self.shared.stats;
+        main_stats
+            .attempted_resolutions
+            .fetch_add(self.stats.attempted_resolutions, Relaxed);
+        main_stats
+            .successful_resolutions
+            .fetch_add(self.stats.successful_resolutions, Relaxed);
+        main_stats
+            .max_resolvent_width_seen
+            .fetch_max(self.stats.max_resolvent_width_seen, Relaxed);
+        main_stats
+            .max_depth_seen
+            .fetch_max(self.stats.max_depth_seen, Relaxed);
+        main_stats
+            .discarded_proofs
+            .fetch_add(self.stats.discarded_proofs, Relaxed);
+        self.stats = LocalProofStats::new();
+    }
 }
 
 // perform the actual similarity calculation, ignoring caching
@@ -230,7 +252,6 @@ where
 #[cfg(test)]
 mod test {
     use rustc_hash::FxHashMap;
-    use std::sync::atomic::Ordering::Relaxed;
 
     use crate::prover::{ProofStep, ProofStepNode};
     use crate::types::{Atom, CNFDisjunction, CNFLiteral, Predicate};
@@ -259,13 +280,13 @@ mod test {
 
     #[test]
     fn test_new() {
-        let ctx = super::ProofContext::new(0.0, Some(2), false, None, None);
+        let ctx = super::SharedProofContext::new(0.0, Some(2), false, None, None);
         assert_eq!(ctx.max_proofs, Some(2));
     }
 
     #[test]
     fn test_record_leaf_proof_keeps_step_with_highest_similarity() {
-        let ctx = super::ProofContext::new(0.0, Some(1), false, None, None);
+        let ctx = super::SharedProofContext::new(0.0, Some(1), false, None, None);
         let proof_step1 = create_proof_step_node(2, 0.5);
         ctx.record_leaf_proof(proof_step1.clone());
         assert_eq!(ctx.scored_leaf_proof_steps.read().unwrap().len(), 1);
@@ -285,7 +306,7 @@ mod test {
 
     #[test]
     fn test_record_leaf_proof_keeps_step_with_lowest_depth_if_similarity_is_equal() {
-        let ctx = super::ProofContext::new(0.0, Some(1), false, None, None);
+        let ctx = super::SharedProofContext::new(0.0, Some(1), false, None, None);
         let proof_step1 = create_proof_step_node(4, 0.5);
         ctx.record_leaf_proof(proof_step1.clone());
         assert_eq!(ctx.scored_leaf_proof_steps.read().unwrap().len(), 1);
@@ -305,7 +326,8 @@ mod test {
 
     #[test]
     fn test_check_resolvent() {
-        let ctx: super::ProofContext = super::ProofContext::new(0.0, Some(1), true, None, None);
+        let ctx: super::SharedProofContext =
+            super::SharedProofContext::new(0.0, Some(1), true, None, None);
         let proof_step = create_proof_step_node(4, 0.5);
         assert!(ctx.check_resolvent(&proof_step.inner));
 
@@ -320,8 +342,5 @@ mod test {
 
         let better_depth_step = create_proof_step_node(3, 0.5);
         assert!(ctx.check_resolvent(&better_depth_step.inner));
-
-        assert_eq!(ctx.stats.resolvent_checks.load(Relaxed), 5);
-        assert_eq!(ctx.stats.resolvent_check_hits.load(Relaxed), 2);
     }
 }

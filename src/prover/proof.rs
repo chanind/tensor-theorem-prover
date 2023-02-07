@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use rustc_hash::FxHashMap;
 
-use super::{FrozenProofStats, ProofStep, SubstitutionsMap};
+use super::{LocalProofStats, ProofStep, SubstitutionsMap};
 use crate::types::{BoundFunction, CNFDisjunction, Term};
 use crate::util::{find_variables_in_terms, PyArcItem};
 
@@ -12,13 +12,13 @@ pub struct Proof {
     #[pyo3(get)]
     pub similarity: f64,
     #[pyo3(get)]
-    pub stats: FrozenProofStats,
+    pub stats: LocalProofStats,
     leaf_proof_step: ProofStep,
 }
 #[pymethods]
 impl Proof {
     #[new]
-    pub fn new(similarity: f64, stats: FrozenProofStats, leaf_proof_step: ProofStep) -> Proof {
+    pub fn new(similarity: f64, stats: LocalProofStats, leaf_proof_step: ProofStep) -> Proof {
         Proof {
             similarity,
             stats,

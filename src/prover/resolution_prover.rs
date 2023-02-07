@@ -8,7 +8,7 @@ use crate::util::PyArcItem;
 
 use super::operations::resolve;
 use super::similarity_cache::SimilarityCache;
-use super::{FrozenProofStats, Proof, ProofContext, ProofStepNode, WorkerProofContext};
+use super::{LocalProofContext, LocalProofStats, Proof, ProofStepNode, SharedProofContext};
 
 #[derive(Clone, Debug)]
 struct ResolutionProverConfig {
@@ -43,6 +43,7 @@ impl ResolutionProverBackend {
         find_highest_similarity_proofs: bool,
         base_knowledge: BTreeSet<PyArcItem<CNFDisjunction>>,
         num_workers: usize,
+        eval_batch_size: usize,
     ) -> Self {
         let config = ResolutionProverConfig {
             max_proof_depth,
@@ -50,7 +51,7 @@ impl ResolutionProverBackend {
             max_resolution_attempts,
             skip_seen_resolvents,
             find_highest_similarity_proofs,
-            eval_batch_size: 5000,
+            eval_batch_size,
         };
         Self {
             py_similarity_fn,
@@ -79,14 +80,14 @@ impl ResolutionProverBackend {
         extra_knowledge: Option<BTreeSet<CNFDisjunction>>,
         max_proofs: Option<usize>,
         skip_seen_resolvents: Option<bool>,
-    ) -> (Vec<Proof>, FrozenProofStats) {
+    ) -> (Vec<Proof>, LocalProofStats) {
         let parsed_extra_knowledge = extra_knowledge.unwrap_or_default();
         let mut proofs = vec![];
         let mut knowledge = self.base_knowledge.clone();
         let arc_inverted_goals = knowledge_to_arc(inverted_goals.clone());
         knowledge.extend(knowledge_to_arc(parsed_extra_knowledge));
         knowledge.extend(arc_inverted_goals.clone());
-        let ctx = ProofContext::new(
+        let ctx = SharedProofContext::new(
             self.min_similarity_threshold,
             max_proofs,
             skip_seen_resolvents.unwrap_or(self.config.skip_seen_resolvents),
@@ -105,8 +106,8 @@ impl ResolutionProverBackend {
                     .into_iter()
                     .map(|inverted_goal| (inverted_goal, None))
                     .collect::<VecDeque<_>>();
-                let worker_ctx = WorkerProofContext::new(&ctx);
-                search_proof_steps_batch(batch, &self.config, &knowledge, worker_ctx, scope);
+                let worker_ctx = LocalProofContext::new(&ctx);
+                search_for_proofs_batch(batch, &self.config, &knowledge, worker_ctx, scope);
             });
         });
 
@@ -139,18 +140,18 @@ impl ResolutionProverBackend {
     }
 }
 
-fn search_proof_steps_batch<'a>(
+fn search_for_proofs_batch<'a>(
     batch: VecDeque<(PyArcItem<CNFDisjunction>, Option<ProofStepNode>)>,
     config: &'a ResolutionProverConfig,
     knowledge: &'a BTreeSet<PyArcItem<CNFDisjunction>>,
-    mut ctx: WorkerProofContext<'a>,
+    mut ctx: LocalProofContext<'a>,
     scope: &rayon::Scope<'a>,
 ) {
     let mut next_batch = batch;
     loop {
         let mut results_accumulator = VecDeque::new();
         for (goal, parent_state) in next_batch {
-            evaluate_proof_step(
+            search_proof_step(
                 goal,
                 config,
                 knowledge,
@@ -162,13 +163,13 @@ fn search_proof_steps_batch<'a>(
                 let next_batch = results_accumulator
                     .drain(..config.eval_batch_size)
                     .collect();
-                let next_ctx = WorkerProofContext::new(&ctx.main);
+                let next_ctx = LocalProofContext::new(&ctx.shared);
                 scope.spawn(move |next_scope| {
-                    search_proof_steps_batch(next_batch, config, knowledge, next_ctx, next_scope);
+                    search_for_proofs_batch(next_batch, config, knowledge, next_ctx, next_scope);
                 });
             }
         }
-        ctx.sync_with_main_ctx();
+        ctx.sync_with_shared_ctx();
         if results_accumulator.is_empty() {
             return;
         }
@@ -176,11 +177,11 @@ fn search_proof_steps_batch<'a>(
     }
 }
 
-fn evaluate_proof_step<'a>(
+fn search_proof_step<'a>(
     goal: PyArcItem<CNFDisjunction>,
     config: &ResolutionProverConfig,
     knowledge: &BTreeSet<PyArcItem<CNFDisjunction>>,
-    ctx: &mut WorkerProofContext,
+    ctx: &mut LocalProofContext,
     parent_state: Option<ProofStepNode>,
     results_accumulator: &mut VecDeque<(PyArcItem<CNFDisjunction>, Option<ProofStepNode>)>,
 ) {
@@ -189,17 +190,18 @@ fn evaluate_proof_step<'a>(
         return;
     }
     if let Some(max_resolution_attempts) = config.max_resolution_attempts {
-        if ctx.main.stats.attempted_resolutions.load(Relaxed) >= max_resolution_attempts {
+        if ctx.shared.stats.attempted_resolutions.load(Relaxed) >= max_resolution_attempts {
             return;
         }
     }
-    if let Some(max_proofs) = ctx.main.max_proofs {
-        if !config.find_highest_similarity_proofs && ctx.main.total_leaf_proofs() >= max_proofs {
+    if let Some(max_proofs) = ctx.shared.max_proofs {
+        if !config.find_highest_similarity_proofs && ctx.shared.total_leaf_proofs() >= max_proofs {
             return;
         }
     }
-    ctx.main.stats.max_depth_seen.fetch_max(depth + 1, Relaxed);
-
+    if depth >= ctx.stats.max_depth_seen {
+        ctx.stats.max_depth_seen = depth + 1;
+    }
     let mut num_sucessful_resolutions = 0;
     for clause in knowledge {
         // resolution always ends up removing a literal from the clause and the goal, and combining the remaining literals
@@ -213,10 +215,10 @@ fn evaluate_proof_step<'a>(
         if next_steps.len() > 0 {
             num_sucessful_resolutions += 1;
         }
-        let min_similarity_threshold = ctx.main.min_similarity_threshold.load(Relaxed);
+        let min_similarity_threshold = ctx.shared.min_similarity_threshold.load(Relaxed);
         for next_step in next_steps {
             if next_step.inner.resolvent.item.literals.is_empty() {
-                ctx.main.record_leaf_proof(next_step);
+                ctx.shared.record_leaf_proof(next_step);
             } else if depth + 1 < config.max_proof_depth {
                 if next_step.inner.running_similarity <= min_similarity_threshold {
                     continue;
@@ -225,24 +227,17 @@ fn evaluate_proof_step<'a>(
                     continue;
                 }
                 let resolvent_width = next_step.inner.resolvent.item.literals.len();
-                ctx.main
-                    .stats
-                    .max_resolvent_width_seen
-                    .fetch_max(resolvent_width, Relaxed);
+                if resolvent_width > ctx.stats.max_resolvent_width_seen {
+                    ctx.stats.max_resolvent_width_seen = resolvent_width;
+                }
                 results_accumulator.push_back((next_step.inner.resolvent.clone(), Some(next_step)));
             }
         }
     }
     // update stats at the end in bulk, doing this in the loop dramatically slows down multi-threaded performance
     // it may even be worth it to do this less often then every eval step
-    ctx.main
-        .stats
-        .attempted_resolutions
-        .fetch_add(knowledge.len(), Relaxed);
-    ctx.main
-        .stats
-        .successful_resolutions
-        .fetch_add(num_sucessful_resolutions, Relaxed);
+    ctx.stats.attempted_resolutions += knowledge.len();
+    ctx.stats.successful_resolutions += num_sucessful_resolutions;
 }
 
 fn knowledge_to_arc(knowledge: BTreeSet<CNFDisjunction>) -> BTreeSet<PyArcItem<CNFDisjunction>> {

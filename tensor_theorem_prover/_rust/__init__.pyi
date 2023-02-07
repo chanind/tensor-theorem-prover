@@ -71,8 +71,6 @@ class RsProofStats:
     max_resolvent_width_seen: int
     max_depth_seen: int
     discarded_proofs: int
-    resolvent_checks: int
-    resolvent_check_hits: int
 
 class RsProof:
     goal: RsCNFDisjunction
@@ -94,6 +92,7 @@ class RsResolutionProverBackend:
     find_highest_similarity_proofs: bool
     base_knowledge: set[RsCNFDisjunction]
     num_workers: int
+    eval_batch_size: int
 
     def __init__(
         self,

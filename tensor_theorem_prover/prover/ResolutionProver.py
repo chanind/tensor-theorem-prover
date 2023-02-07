@@ -37,9 +37,12 @@ class ResolutionProver:
         cache_similarity: bool = True,
         skip_seen_resolvents: bool = False,
         find_highest_similarity_proofs: bool = True,
-        num_workers: Optional[int] = None
+        num_workers: Optional[int] = None,
+        eval_batch_size: int = 5000,
     ) -> None:
         self.skolemizer = Skolemizer()
+        # contention gets pretty bad after 6 threads, so default to a max of 6 for now
+        auto_num_workers = max(6, multiprocessing.cpu_count())
         self.backend = RsResolutionProverBackend(
             max_proof_depth,
             max_resolvent_width,
@@ -50,7 +53,8 @@ class ResolutionProver:
             skip_seen_resolvents,
             find_highest_similarity_proofs,
             set(),
-            max(1, num_workers or multiprocessing.cpu_count()),
+            max(1, num_workers or auto_num_workers),
+            eval_batch_size,
         )
         if knowledge is not None:
             self.extend_knowledge(knowledge)
@@ -116,7 +120,7 @@ class ResolutionProver:
         return (proofs, stats)
 
     def purge_similarity_cache(self) -> None:
-        pass
+        self.backend.purge_similarity_cache()
 
     def reset(self) -> None:
         """Clear all knowledge from the prover and wipe the similarity cache"""

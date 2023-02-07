@@ -1,6 +1,6 @@
 use rustc_hash::FxHashMap;
 
-use crate::prover::{SubstitutionsMap, WorkerProofContext};
+use crate::prover::{LocalProofContext, SubstitutionsMap};
 use crate::types::{Atom, Term};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -13,7 +13,7 @@ pub struct Unification {
 /// Fuzzy-optional implementation of unify
 /// If no similarity_func is provided, or if either atom lacks a embedding,
 /// then it will do an exact match on the symbols themselves
-pub fn unify(source: &Atom, target: &Atom, ctx: &mut WorkerProofContext) -> Option<Unification> {
+pub fn unify(source: &Atom, target: &Atom, ctx: &mut LocalProofContext) -> Option<Unification> {
     if source.terms.len() != target.terms.len() {
         return None;
     }
@@ -57,7 +57,7 @@ fn unify_terms(
     source_terms: &[Term],
     target_terms: &[Term],
     similarity: f64,
-    ctx: &mut WorkerProofContext,
+    ctx: &mut LocalProofContext,
 ) -> Option<Unification> {
     let mut cur_similarity = similarity;
     let mut substitutions: SubstitutionSet = FxHashMap::default();
@@ -166,7 +166,7 @@ fn unify_term_pair(
     target_term: &Term,
     substitutions: &mut SubstitutionSet,
     similarity: f64,
-    ctx: &mut WorkerProofContext,
+    ctx: &mut LocalProofContext,
 ) -> Option<f64> {
     let mut pairs_stack: Vec<(LabeledTerm, LabeledTerm)> = vec![(
         LabeledTerm::new(BindingLabel::Source, source_term.clone()),
@@ -268,12 +268,12 @@ mod test {
         const1, const2, func1, func2, get_py_similarity_fn, pred1, pred2, to_numpy_array, x, y, z,
     };
     use crate::{
-        prover::ProofContext,
+        prover::SharedProofContext,
         types::{Constant, Predicate},
     };
 
-    fn ctx() -> ProofContext {
-        ProofContext::new(0.5, None, true, None, Some(get_py_similarity_fn()))
+    fn ctx() -> SharedProofContext {
+        SharedProofContext::new(0.5, None, true, None, Some(get_py_similarity_fn()))
     }
 
     #[test]
@@ -282,7 +282,7 @@ mod test {
         let target = pred1().atom(vec![const1().into(), const2().into()]);
         let ctx = ctx();
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             Unification {
                 source_substitutions: FxHashMap::default(),
                 target_substitutions: FxHashMap::default(),
@@ -297,7 +297,7 @@ mod test {
         let source = pred1().atom(vec![const1().into(), const2().into()]);
         let target = pred2().atom(vec![const1().into(), const2().into()]);
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
             None
         );
     }
@@ -308,7 +308,7 @@ mod test {
         let source = pred1().atom(vec![const2().into(), const2().into()]);
         let target = pred1().atom(vec![const1().into(), const2().into()]);
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
             None
         );
     }
@@ -319,7 +319,7 @@ mod test {
         let source = pred1().atom(vec![func1().bind(vec![x().into()]).into()]);
         let target = pred1().atom(vec![func2().bind(vec![y().into()]).into()]);
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
             None
         );
     }
@@ -330,7 +330,7 @@ mod test {
         let source = pred1().atom(vec![func1().bind(vec![x().into(), y().into()]).into()]);
         let target = pred1().atom(vec![func1().bind(vec![x().into()]).into()]);
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
             None
         );
     }
@@ -341,7 +341,7 @@ mod test {
         let source = pred1().atom(vec![const1().into()]);
         let target = pred1().atom(vec![const1().into(), const2().into()]);
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
             None
         );
     }
@@ -357,7 +357,7 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
@@ -373,7 +373,7 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
@@ -389,7 +389,7 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
@@ -405,7 +405,7 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
@@ -421,7 +421,7 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
@@ -432,7 +432,7 @@ mod test {
         let source = pred1().atom(vec![x().into(), x().into()]);
         let target = pred1().atom(vec![const1().into(), const2().into()]);
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
             None
         );
     }
@@ -453,7 +453,7 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
@@ -483,7 +483,7 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
@@ -499,7 +499,7 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
@@ -515,7 +515,7 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
@@ -531,7 +531,7 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
@@ -547,7 +547,7 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
@@ -565,7 +565,7 @@ mod test {
             similarity: 1.0,
         };
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap(),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap(),
             expected_unification
         );
     }
@@ -576,7 +576,7 @@ mod test {
         let source = pred1().atom(vec![func1().bind(vec![x().into()]).into(), x().into()]);
         let target = pred1().atom(vec![y().into(), func1().bind(vec![y().into()]).into()]);
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
             None
         );
     }
@@ -590,7 +590,7 @@ mod test {
         let vec_pred2 = Predicate::new("pred2", Some(embedding2));
         let source = vec_pred1.atom(vec![x().into()]);
         let target = vec_pred2.atom(vec![const1().into()]);
-        let unification = unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap();
+        let unification = unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap();
         assert_eq!(
             unification.source_substitutions,
             fxmap! { x() => const1().into() }
@@ -609,7 +609,7 @@ mod test {
         let source = vec_pred1.atom(vec![x().into()]);
         let target = vec_pred2.atom(vec![const1().into()]);
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
             None
         );
     }
@@ -623,7 +623,7 @@ mod test {
         let vec_const2 = Constant::new("const2", Some(embedding2));
         let source = pred1().atom(vec![vec_const1.into()]);
         let target = pred1().atom(vec![vec_const2.into()]);
-        let unification = unify(&source, &target, &mut WorkerProofContext::new(&ctx)).unwrap();
+        let unification = unify(&source, &target, &mut LocalProofContext::new(&ctx)).unwrap();
         assert_eq!(unification.source_substitutions, FxHashMap::default());
         assert_eq!(unification.target_substitutions, FxHashMap::default());
         assert!(unification.similarity > 0.9 && unification.similarity < 1.0);
@@ -639,7 +639,7 @@ mod test {
         let source = pred1().atom(vec![vec_const1.into()]);
         let target = pred1().atom(vec![vec_const2.into()]);
         assert_eq!(
-            unify(&source, &target, &mut WorkerProofContext::new(&ctx)),
+            unify(&source, &target, &mut LocalProofContext::new(&ctx)),
             None
         );
     }
