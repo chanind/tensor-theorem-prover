@@ -9,7 +9,7 @@ mod resolution_prover;
 mod similarity_cache;
 
 pub use proof::Proof;
-pub use proof_context::ProofContext;
+pub use proof_context::{ProofContext, WorkerProofContext};
 pub use proof_stats::{FrozenProofStats, ProofStats};
 pub use proof_step::{ProofStep, ProofStepNode, SubstitutionsMap};
 pub use resolution_prover::ResolutionProverBackend;

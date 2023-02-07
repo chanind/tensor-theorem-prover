@@ -5,10 +5,6 @@ use pyo3::prelude::*;
 
 /// Stats on how complex a proof was to compute
 pub struct ProofStats {
-    pub attempted_unifications: AtomicUsize,
-    pub successful_unifications: AtomicUsize,
-    pub similarity_comparisons: AtomicUsize,
-    pub similarity_cache_hits: AtomicUsize,
     pub attempted_resolutions: AtomicUsize,
     pub successful_resolutions: AtomicUsize,
     pub max_resolvent_width_seen: AtomicUsize,
@@ -20,10 +16,6 @@ pub struct ProofStats {
 impl ProofStats {
     pub fn new() -> Self {
         Self {
-            attempted_unifications: AtomicUsize::new(0),
-            successful_unifications: AtomicUsize::new(0),
-            similarity_comparisons: AtomicUsize::new(0),
-            similarity_cache_hits: AtomicUsize::new(0),
             attempted_resolutions: AtomicUsize::new(0),
             successful_resolutions: AtomicUsize::new(0),
             max_resolvent_width_seen: AtomicUsize::new(0),
@@ -35,13 +27,8 @@ impl ProofStats {
     }
 }
 impl ProofStats {
-    #[profiling::function]
     pub fn copy_and_freeze(&self) -> FrozenProofStats {
         FrozenProofStats {
-            attempted_unifications: self.attempted_unifications.load(Relaxed),
-            successful_unifications: self.successful_unifications.load(Relaxed),
-            similarity_comparisons: self.similarity_comparisons.load(Relaxed),
-            similarity_cache_hits: self.similarity_cache_hits.load(Relaxed),
             attempted_resolutions: self.attempted_resolutions.load(Relaxed),
             successful_resolutions: self.successful_resolutions.load(Relaxed),
             max_resolvent_width_seen: self.max_resolvent_width_seen.load(Relaxed),
@@ -56,14 +43,6 @@ impl ProofStats {
 #[pyclass(name = "RsProofStats")]
 #[derive(Clone)]
 pub struct FrozenProofStats {
-    #[pyo3(get)]
-    pub attempted_unifications: usize,
-    #[pyo3(get)]
-    pub successful_unifications: usize,
-    #[pyo3(get)]
-    pub similarity_comparisons: usize,
-    #[pyo3(get)]
-    pub similarity_cache_hits: usize,
     #[pyo3(get)]
     pub attempted_resolutions: usize,
     #[pyo3(get)]

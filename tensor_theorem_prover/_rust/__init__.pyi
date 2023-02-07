@@ -66,10 +66,6 @@ class RsProofStep:
     depth: int
 
 class RsProofStats:
-    attempted_unifications: int
-    successful_unifications: int
-    similarity_comparisons: int
-    similarity_cache_hits: int
     attempted_resolutions: int
     successful_resolutions: int
     max_resolvent_width_seen: int

@@ -129,23 +129,19 @@ def test_performance_with_mixed_amr_reasoner_batch() -> None:
         knowledge=all_knowledge,
         # similarity_func=max_similarity([cosine_similarity, partial_symbol_compare]),
         similarity_func=None,
-        cache_similarity=False,
-        max_proof_depth=10,
-        max_resolvent_width=6,
+        # cache_similarity=False,
+        max_proof_depth=12,
+        max_resolvent_width=7,
         min_similarity_threshold=0.5,
-        skip_seen_resolvents=False,
+        skip_seen_resolvents=True,
         # max_resolution_attempts=50_000_000,
-        num_workers=1,
+        num_workers=6,
     )
     for goal in sample["goals"]:
         proofs, proof_stats = prover.prove_all_with_stats(goal, max_proofs=1)
         stats.append(proof_stats)
         total_proofs += len(proofs)
     summed_stats = ProofStats(
-        attempted_unifications=sum(s.attempted_unifications for s in stats),
-        successful_unifications=sum(s.successful_unifications for s in stats),
-        similarity_comparisons=sum(s.similarity_comparisons for s in stats),
-        similarity_cache_hits=sum(s.similarity_cache_hits for s in stats),
         attempted_resolutions=sum(s.attempted_resolutions for s in stats),
         successful_resolutions=sum(s.successful_resolutions for s in stats),
         max_resolvent_width_seen=max(s.max_resolvent_width_seen for s in stats),

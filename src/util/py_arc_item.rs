@@ -9,6 +9,7 @@ where
     // TODO: figure out how to add all the traits and stuff
     // so you don't have to pull this inner set out when using struct
     pub item: Arc<T>,
+    // pub item: T,
 }
 impl<T> PyArcItem<T>
 where
@@ -17,6 +18,7 @@ where
     pub fn new(item: T) -> Self {
         Self {
             item: Arc::new(item),
+            // item,
         }
     }
 }
@@ -28,6 +30,7 @@ where
     fn from(item: T) -> Self {
         Self {
             item: Arc::new(item.clone()),
+            // item: item.clone(),
         }
     }
 }
@@ -47,6 +50,7 @@ where
     T: Clone + Ord + PyClass + IntoPy<PyObject>,
 {
     fn into_py(self, py: Python) -> PyObject {
+        // (*self.item).clone().into_py(py)
         (*self.item).clone().into_py(py)
     }
 }

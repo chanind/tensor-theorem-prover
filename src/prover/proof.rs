@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 
 use super::{FrozenProofStats, ProofStep, SubstitutionsMap};
 use crate::types::{BoundFunction, CNFDisjunction, Term};
-use crate::util::find_variables_in_terms;
+use crate::util::{find_variables_in_terms, PyArcItem};
 
 /// Respresentation of a successful proof of a goal
 #[pyclass(name = "RsProof")]
@@ -32,8 +32,9 @@ impl Proof {
     }
 
     #[getter]
-    pub fn goal(&self) -> CNFDisjunction {
-        (*self.proof_steps().first().unwrap().source.item).clone()
+    pub fn goal(&self) -> PyArcItem<CNFDisjunction> {
+        // (*self.proof_steps().first().unwrap().source.item).clone()
+        self.proof_steps().first().unwrap().source.clone()
     }
 
     #[getter]
@@ -54,6 +55,7 @@ impl Proof {
     pub fn substitutions(&self) -> SubstitutionsMap {
         let goal = &self.goal();
         let goal_terms = goal
+            .item
             .literals
             .iter()
             .flat_map(|literal| literal.item.atom.terms.iter())
