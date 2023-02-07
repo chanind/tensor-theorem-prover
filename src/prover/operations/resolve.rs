@@ -29,7 +29,9 @@ pub fn resolve(
     parent_node: Option<&ProofStepNode>,
 ) -> Vec<ProofStepNode> {
     let mut next_steps = Vec::new();
-    let source_literal = source.item.literals.first().unwrap();
+    // TODO: replace this line once we can use rust 1.66+ in readthedocs
+    // let source_literal = source.item.literals.first().unwrap();
+    let source_literal = source.item.literals.iter().next().unwrap();
     for target_literal in target.item.literals.iter() {
         // we can only resolve literals with the opposite polarity
         if source_literal.item.polarity == target_literal.item.polarity {
