@@ -231,12 +231,10 @@ jobs:
     runs-on: ubuntu-latest
     concurrency: release
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           token: ${{ secrets.GH_PAT }}
           fetch-depth: 0
-      # https://github.com/gitpython-developers/GitPython/issues/1016#issuecomment-1104114129
-      - run: git config --global --add safe.directory '*'
       - name: Semantic Release
         uses: relekang/python-semantic-release@v7.33.1
         with:
