@@ -235,10 +235,10 @@ jobs:
         with:
           token: ${{ secrets.GH_PAT }}
           fetch-depth: 0
+      # https://github.com/gitpython-developers/GitPython/issues/1016#issuecomment-1104114129
+      - run: git config --global --add safe.directory '*'
       - name: Semantic Release
-        # uses: relekang/python-semantic-release@v7.28.1
-        # temp fix until https://github.com/relekang/python-semantic-release/pull/472 is fixed
-        uses: chanind/python-semantic-release@7-28-1-packaging-fix
+        uses: relekang/python-semantic-release@v7.33.1
         with:
           github_token: ${{ secrets.GH_PAT }}
 
