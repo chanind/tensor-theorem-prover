@@ -105,6 +105,8 @@ class RsResolutionProverBackend:
         skip_seen_resolvents: bool,
         find_highest_similarity_proofs: bool,
         base_knowledge: set[RsCNFDisjunction],
+        num_workers: int,
+        eval_batch_size: int,
     ) -> None: ...
     def extend_knowledge(self, knowledge: set[RsCNFDisjunction]) -> None: ...
     def prove_all_with_stats(
