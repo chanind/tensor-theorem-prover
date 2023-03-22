@@ -222,3 +222,17 @@ Like fuzzy-reasoner, this library also takes inspiration from the following pape
 ## Contributing
 
 Contributions are welcome! Please leave an issue in the Github repo if you find any bugs, and open a pull request with and fixes or improvements that you'd like to contribute.
+
+## Citation
+If you use tensor-theorem-prover in your work, please cite the following:
+
+```bibtex
+@misc{chanin2023neurosymbolic,
+      title={Neuro-symbolic Commonsense Social Reasoning}, 
+      author={David Chanin and Anthony Hunter},
+      year={2023},
+      eprint={2303.08264},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI}
+}
+```
